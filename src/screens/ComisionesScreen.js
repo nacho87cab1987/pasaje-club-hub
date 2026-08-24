@@ -35,11 +35,12 @@ export default function ComisionesScreen({ navigation }) {
   const [verLiq, setVerLiq] = useState(false);
   const [liquidaciones, setLiquidaciones] = useState([]);
   const [refrescando, setRefrescando] = useState(false);
+  const [scope, setScope] = useState('mios');
 
   const cargar = useCallback(async () => {
     setError(null);
     try {
-      const p = periodo ? { periodo } : {};
+      const p = { ...(periodo ? { periodo } : {}), ...(scope === 'todos' ? { scope } : {}) };
       const [r, m, ps] = await Promise.all([
         comisiones.resumen(p),
         comisiones.mis(p),
@@ -50,7 +51,7 @@ export default function ComisionesScreen({ navigation }) {
       setPeriodos(ps.items || []);
       if (!periodo) setPeriodo(r.periodo);
     } catch (e) { setError(e.message); setItems([]); }
-  }, [periodo]);
+  }, [periodo, scope]);
 
   useEffect(() => navigation.addListener('focus', cargar), [navigation, cargar]);
 
@@ -79,14 +80,34 @@ export default function ComisionesScreen({ navigation }) {
         )}
         ListHeaderComponent={(
           <>
-            <Pressable style={s.selector} onPress={() => setVerPeriodos(true)}>
-              <MaterialIcons name="calendar-month" size={17} color={C.tealDeep} />
-              <Text style={s.selectorTxt}>{nombreMes(resumen.periodo)}</Text>
-              <MaterialIcons name="expand-more" size={19} color={C.tealDeep} />
-            </Pressable>
+            <View style={s.cabecera}>
+              <Pressable style={s.selector} onPress={() => setVerPeriodos(true)}>
+                <MaterialIcons name="calendar-month" size={17} color={C.tealDeep} />
+                <Text style={s.selectorTxt}>{nombreMes(resumen.periodo)}</Text>
+                <MaterialIcons name="expand-more" size={19} color={C.tealDeep} />
+              </Pressable>
+
+              {resumen.puede_ver_todo ? (
+                <Pressable
+                  style={[s.todo, scope === 'todos' && s.todoOn]}
+                  onPress={() => setScope(scope === 'todos' ? 'mios' : 'todos')}
+                >
+                  <MaterialIcons
+                    name={scope === 'todos' ? 'groups' : 'person'}
+                    size={15}
+                    color={scope === 'todos' ? '#fff' : C.ink2}
+                  />
+                  <Text style={[s.todoTxt, scope === 'todos' && { color: '#fff' }]}>
+                    {scope === 'todos' ? 'Agencia' : 'Mias'}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
 
             <View style={[s.tarjeta, sombra]}>
-              <Text style={s.grandeT}>Comision del mes</Text>
+              <Text style={s.grandeT}>
+                {scope === 'todos' ? 'Comisiones de la agencia' : 'Comision del mes'}
+              </Text>
               <Text style={s.grande}>{plata(resumen.del_periodo)}</Text>
 
               {/* Separar lo propio del override es lo que hace que el numero
@@ -169,6 +190,9 @@ export default function ComisionesScreen({ navigation }) {
                     <View style={s.eq}><Text style={s.eqTxt}>EQUIPO</Text></View>
                   ) : null}
                 </View>
+                {item.vendedor ? (
+                  <Text style={s.vend} numberOfLines={1}>{item.vendedor}</Text>
+                ) : null}
                 {item.cliente || item.destino ? (
                   <Text style={s.cli} numberOfLines={1}>
                     {[item.cliente, item.destino].filter(Boolean).join(' · ')}
@@ -250,10 +274,18 @@ function Hoja({ visible, onCerrar, titulo, children }) {
 }
 
 const s = StyleSheet.create({
+  cabecera: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  todo: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: C.line,
+    backgroundColor: '#fff', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  todoOn: { backgroundColor: C.navy, borderColor: C.navy },
+  todoTxt: { fontSize: 12.5, fontWeight: '600', color: C.ink2 },
+  vend: { fontSize: 11.5, color: C.tealDeep, fontWeight: '600', marginTop: 2 },
   selector: {
     flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
     backgroundColor: C.tealSoft, borderRadius: 18, paddingHorizontal: 13,
-    paddingVertical: 8, marginBottom: 12,
+    paddingVertical: 8,
   },
   selectorTxt: { fontSize: 13.5, fontWeight: '700', color: C.tealDeep },
   tarjeta: { backgroundColor: C.navy, borderRadius: R.lg, padding: 18 },

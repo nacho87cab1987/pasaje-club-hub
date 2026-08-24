@@ -34,6 +34,8 @@ export default function ExpedientesScreen({ navigation, route }) {
   const [error, setError] = useState(null);
   const [q, setQ] = useState('');
   const [filtro, setFiltro] = useState('todos');
+  const [scope, setScope] = useState('mios');
+  const [veTodo, setVeTodo] = useState(false);
   const [refrescando, setRefrescando] = useState(false);
 
   const cargar = useCallback(async (busqueda) => {
@@ -41,11 +43,12 @@ export default function ExpedientesScreen({ navigation, route }) {
     try {
       const r = deVendedor
         ? await expedientes.de(deVendedor, { q: busqueda, estado: filtro })
-        : await expedientes.mis({ q: busqueda, estado: filtro });
+        : await expedientes.mis({ q: busqueda, estado: filtro, scope });
       setItems(r.items || []);
       setEstados(r.estados || {});
+      setVeTodo(!!r.puede_ver_todo);
     } catch (e) { setError(e.message); setItems([]); }
-  }, [deVendedor, filtro]);
+  }, [deVendedor, filtro, scope]);
 
   useEffect(() => {
     if (route.params?.nombre) navigation.setOptions({ title: route.params.nombre });
@@ -76,6 +79,19 @@ export default function ExpedientesScreen({ navigation, route }) {
         />
         {q ? <MaterialIcons name="close" size={19} color={C.ink3} onPress={() => setQ('')} /> : null}
       </View>
+
+      {veTodo && !deVendedor ? (
+        <View style={s.scopes}>
+          {[{ k: 'mios', n: 'Mios' }, { k: 'todos', n: 'Toda la agencia' }].map((o) => (
+            <Pressable key={o.k} onPress={() => setScope(o.k)}
+              style={[s.scope, scope === o.k && s.scopeOn]}>
+              <Text style={[s.scopeTxt, scope === o.k && { color: C.navy, fontWeight: '700' }]}>
+                {o.n}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       <FlatList
         horizontal
@@ -188,6 +204,13 @@ const s = StyleSheet.create({
     borderRadius: R.md, borderWidth: 1, borderColor: C.line,
   },
   input: { flex: 1, fontSize: 14.5, color: C.ink },
+  scopes: {
+    flexDirection: 'row', gap: 4, backgroundColor: '#fff', marginHorizontal: 14,
+    marginBottom: 8, padding: 4, borderRadius: 12, borderWidth: 1, borderColor: C.line,
+  },
+  scope: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 9 },
+  scopeOn: { backgroundColor: C.tealSoft },
+  scopeTxt: { fontSize: 12.5, fontWeight: '600', color: C.ink2 },
   chip: {
     borderWidth: 1, borderColor: C.line, backgroundColor: '#fff',
     borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7,
