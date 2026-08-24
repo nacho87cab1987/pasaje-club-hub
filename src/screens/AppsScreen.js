@@ -11,7 +11,7 @@ import { C, R, sombra, icono } from '../theme';
 const IMPLEMENTADOS = { personas: 'Personas', admin: 'Admin', crm: 'CRM', gestion: 'Gestion', documentos: 'Documentos', academia: 'Academia', organigrama: 'Organigrama', presupuestos: 'Presupuestos',
   cumpleanos: 'Cumpleanos', cumples: 'Cumpleanos', muro: 'Inicio',
   expedientes: 'Expedientes', equipo: 'Equipo', comisiones: 'Comisiones',
-  onboarding: 'Onboarding', ventas: 'Ventas' };
+  onboarding: 'Onboarding', ventas: 'Ventas', pasajito: 'Pasajito' };
 
 const TITULOS = {
   general: 'General',

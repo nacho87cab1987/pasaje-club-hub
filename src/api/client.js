@@ -98,7 +98,8 @@ async function request(archivo, action, { method = 'GET', body, params, timeout 
 
 export const api = {
   get:  (archivo, action, params)       => request(archivo, action, { params }),
-  post: (archivo, action, body, params) => request(archivo, action, { method: 'POST', body, params }),
+  post: (archivo, action, body, params, opts) =>
+    request(archivo, action, { method: 'POST', body, params, ...(opts || {}) }),
 };
 
 // --- Atajos por endpoint ---------------------------------------------------
@@ -222,6 +223,19 @@ export const academia = {
 // Presupuestos: se arman en el panel web (es un editor de 3.500 lineas que
 // en un telefono seria peor que abrir la web). Desde la app se listan, se
 // comparten y se duplican, que es lo que se necesita estando afuera.
+// Pasajito: la IA interna. El backend ya existe en el panel; la app solo
+// consume sus endpoints de chat.
+export const pasajito = {
+  chats:        ()              => api.get('pasajito.php', 'chats'),
+  mensajes:     (chat_id)       => api.get('pasajito.php', 'mensajes', { chat_id }),
+  nuevoChat:    ()              => api.post('pasajito.php', 'nuevo_chat', {}),
+  eliminarChat: (chat_id)       => api.post('pasajito.php', 'eliminar_chat', { chat_id }),
+  // La respuesta puede tardar: el modelo consulta conocimiento, catalogo y
+  // precios antes de contestar.
+  enviar: (chat_id, mensaje) =>
+    api.post('pasajito.php', 'enviar', { chat_id, mensaje }, null, { timeout: 90000 }),
+};
+
 export const ventas = {
   resumen:   (params) => api.get('hub_ventas.php', 'resumen', params),
   evolucion: (params) => api.get('hub_ventas.php', 'evolucion', params),

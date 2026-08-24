@@ -51,6 +51,7 @@ import EquipoScreen from '../screens/EquipoScreen';
 import ComisionesScreen from '../screens/ComisionesScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import VentasScreen from '../screens/VentasScreen';
+import PasajitoScreen from '../screens/PasajitoScreen';
 import OnboardingGenteScreen from '../screens/OnboardingGenteScreen';
 import { AdminScreen, AdminPersonaScreen } from '../screens/AdminScreen';
 
@@ -174,6 +175,7 @@ export default function RootNavigator() {
             <Stack.Screen name="Comisiones" component={ComisionesScreen} options={{ title: 'Comisiones' }} />
             <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ title: 'Onboarding' }} />
             <Stack.Screen name="Ventas" component={VentasScreen} options={{ title: 'Ventas' }} />
+            <Stack.Screen name="Pasajito" component={PasajitoScreen} options={{ title: 'Pasajito' }} />
             <Stack.Screen name="OnboardingGente" component={OnboardingGenteScreen} options={{ title: 'Onboarding del equipo' }} />
             <Stack.Screen name="Pendiente" component={PendienteScreen} options={{ title: '' }} />
           </>
