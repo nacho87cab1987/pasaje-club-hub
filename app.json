@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "Pasaje Club",
+    "slug": "pasajeclub-hub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "pasajeclub",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#072E40"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.pasajeclub.hub",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "icon": "./assets/icon.png"
+    },
+    "android": {
+      "package": "com.pasajeclub.hub",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/isotipo.png",
+        "backgroundColor": "#072E40"
+      },
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#11BCB3"
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pasaje Club necesita acceso a tus fotos para que puedas compartirlas en el muro.",
+          "cameraPermission": "Pasaje Club necesita la camara para que puedas sacar fotos y compartirlas."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Pasaje Club necesita el microfono para que puedas mandar audios a tus clientes."
+        }
+      ]
+    ],
+    "icon": "./assets/icon.png",
+    "extra": {
+      "eas": {
+        "projectId": "b3a77918-2a8b-47b1-993c-649516baf1af"
+      }
+    }
+  }
+}

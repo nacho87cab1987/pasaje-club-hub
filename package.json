@@ -1,0 +1,36 @@
+{
+  "name": "pasajeclub-hub",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "*",
+    "@react-navigation/bottom-tabs": "^7.2.0",
+    "@react-navigation/native": "^7.0.14",
+    "@react-navigation/native-stack": "^7.2.0",
+    "expo": "^57.0.15",
+    "expo-asset": "*",
+    "expo-audio": "*",
+    "expo-constants": "*",
+    "expo-dev-client": "~57.0.14",
+    "expo-device": "*",
+    "expo-document-picker": "*",
+    "expo-font": "*",
+    "expo-image-picker": "*",
+    "expo-notifications": "*",
+    "expo-secure-store": "*",
+    "expo-status-bar": "*",
+    "react": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0"
+  },
+  "private": true
+}
