@@ -188,25 +188,15 @@ export function crmApi(credencial) {
 
 /** Sube un archivo al CRM y devuelve el id para adjuntarlo al mensaje. */
 async function subirAdjuntoCrm(asset, conversacionId, duracion) {
-  const form = new FormData();
-  form.append('archivo', {
-    uri: asset.uri,
-    name: (asset.fileName || `foto_${Date.now()}.jpg`).replace(/\.(heic|heif)$/i, '.jpg'),
-    type: asset.mimeType || 'image/jpeg',
+  const { subirArchivo } = require('../subir');
+  return subirArchivo(asset, {
+    url: 'hub_crm_subir.php',
+    campo: 'archivo',
+    params: {
+      conversacion_id: conversacionId,
+      ...(duracion ? { duracion: Math.round(duracion) } : {}),
+    },
   });
-
-  const qs = duracion ? `&duracion=${Math.round(duracion)}` : '';
-  const res = await fetch(`${API}/hub_crm_subir.php?conversacion_id=${conversacionId}${qs}`, {
-    method: 'POST',
-    headers: { 'X-Token': getToken(), Accept: 'application/json' },
-    body: form,
-  });
-  const texto = await res.text();
-  let data;
-  try { data = JSON.parse(texto); }
-  catch { throw new ApiError('Respuesta inesperada al subir', res.status, { crudo: texto.slice(0, 200) }); }
-  if (!res.ok || data.ok === false) throw new ApiError(data.error || 'No se pudo subir', res.status, data);
-  return data;
 }
 
 // Crear y administrar el catalogo de etiquetas. Va aparte de crmApi porque
@@ -303,27 +293,15 @@ export function urlDocumento(id) {
 
 /** Sube un documento con sus metadatos. */
 export async function subirDocumento(archivo, datos) {
-  const form = new FormData();
-  form.append('archivo', {
-    uri: archivo.uri,
-    name: archivo.name || `doc_${Date.now()}`,
-    type: archivo.mimeType || 'application/octet-stream',
+  const { subirArchivo } = require('../subir');
+  return subirArchivo(archivo, {
+    url: 'hub_documentos.php',
+    campo: 'archivo',
+    params: { action: 'subir' },
+    // Van como campos del formulario, no en la URL: la descripcion puede
+    // ser larga y algunos servidores recortan las query strings.
+    extras: datos,
   });
-  Object.entries(datos).forEach(([k, v]) => {
-    if (v !== null && v !== undefined && v !== '') form.append(k, String(v));
-  });
-
-  const res = await fetch(`${API}/hub_documentos.php?action=subir`, {
-    method: 'POST',
-    headers: { 'X-Token': getToken(), Accept: 'application/json' },
-    body: form,
-  });
-  const texto = await res.text();
-  let data;
-  try { data = JSON.parse(texto); }
-  catch { throw new ApiError('Respuesta inesperada al subir', res.status, { crudo: texto.slice(0, 200) }); }
-  if (!res.ok || data.ok === false) throw new ApiError(data.error || 'No se pudo subir', res.status, data);
-  return data;
 }
 
 export const gestion = {

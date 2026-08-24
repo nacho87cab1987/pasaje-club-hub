@@ -1,14 +1,15 @@
 // ============================================================================
 // Elegir y subir imagenes
 // ----------------------------------------------------------------------------
-// La subida va por FormData, no por JSON: mandar una foto en base64 la infla
-// un 33% y obliga al servidor a decodificarla en memoria. React Native arma
-// el multipart solo con { uri, name, type }.
+// La subida va como multipart, no como JSON: mandar una foto en base64 la
+// infla un 33% y obliga al servidor a decodificarla en memoria.
+// El multipart lo arma subirArchivo(), que usa la subida nativa de
+// expo-file-system porque RN 0.86 rompio el FormData con { uri }.
 // ============================================================================
 
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
-import { API, getToken, ApiError } from './api/client';
+import { subirArchivo } from './subir';
 
 /**
  * Abre la galeria (o la camara) y devuelve las imagenes elegidas.
@@ -52,35 +53,14 @@ export async function elegirImagenes({ camara = false, maximo = 4 } = {}) {
  * destino: 'muro' o 'perfil'. Con 'perfil' el servidor la aplica sola.
  */
 export async function subirImagen(asset, destino = 'muro', alProgresar) {
-  const form = new FormData();
-  const nombre = asset.fileName || `foto_${Date.now()}.jpg`;
-
-  form.append('archivo', {
-    uri: asset.uri,
-    name: nombre.replace(/\.(heic|heif)$/i, '.jpg'),
-    type: asset.mimeType || 'image/jpeg',
-  });
-
   if (alProgresar) alProgresar(0);
 
-  // Sin Content-Type a proposito: fetch tiene que ponerlo solo, con el
-  // boundary del multipart. Si lo forzamos, el servidor no puede parsearlo.
-  const res = await fetch(`${API}/hub_subir.php?action=imagen&destino=${destino}`, {
-    method: 'POST',
-    headers: { 'X-Token': getToken(), Accept: 'application/json' },
-    body: form,
+  // La subida va por el helper: RN 0.86 rechaza el FormData con { uri }.
+  const data = await subirArchivo(asset, {
+    url: 'hub_subir.php',
+    campo: 'archivo',
+    params: { action: 'imagen', destino },
   });
-
-  const texto = await res.text();
-  let data;
-  try {
-    data = JSON.parse(texto);
-  } catch {
-    throw new ApiError('El servidor respondio algo inesperado al subir', res.status, {
-      crudo: texto.slice(0, 200),
-    });
-  }
-  if (!res.ok || data.ok === false) throw new ApiError(data.error || 'No se pudo subir', res.status, data);
 
   if (alProgresar) alProgresar(1);
   return data;
