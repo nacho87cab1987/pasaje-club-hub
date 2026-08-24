@@ -49,6 +49,8 @@ import ExpedientesScreen from '../screens/ExpedientesScreen';
 import ExpedienteScreen from '../screens/ExpedienteScreen';
 import EquipoScreen from '../screens/EquipoScreen';
 import ComisionesScreen from '../screens/ComisionesScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
+import OnboardingGenteScreen from '../screens/OnboardingGenteScreen';
 import { AdminScreen, AdminPersonaScreen } from '../screens/AdminScreen';
 
 const Tab = createBottomTabNavigator();
@@ -169,6 +171,8 @@ export default function RootNavigator() {
             <Stack.Screen name="Expediente" component={ExpedienteScreen} options={{ title: '' }} />
             <Stack.Screen name="Equipo" component={EquipoScreen} options={{ title: 'Mi equipo' }} />
             <Stack.Screen name="Comisiones" component={ComisionesScreen} options={{ title: 'Comisiones' }} />
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ title: 'Onboarding' }} />
+            <Stack.Screen name="OnboardingGente" component={OnboardingGenteScreen} options={{ title: 'Onboarding del equipo' }} />
             <Stack.Screen name="Pendiente" component={PendienteScreen} options={{ title: '' }} />
           </>
         )}
