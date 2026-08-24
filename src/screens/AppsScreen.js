@@ -9,7 +9,8 @@ import { C, R, sombra, icono } from '../theme';
 // la pantalla "en construccion" con su nombre, en vez de desaparecer: si el
 // servidor lo habilito, la persona tiene que verlo.
 const IMPLEMENTADOS = { personas: 'Personas', admin: 'Admin', crm: 'CRM', gestion: 'Gestion', documentos: 'Documentos', academia: 'Academia', organigrama: 'Organigrama', presupuestos: 'Presupuestos',
-  cumpleanos: 'Cumpleanos', cumples: 'Cumpleanos', muro: 'Inicio' };
+  cumpleanos: 'Cumpleanos', cumples: 'Cumpleanos', muro: 'Inicio',
+  expedientes: 'Expedientes', equipo: 'Equipo' };
 
 const TITULOS = {
   general: 'General',
