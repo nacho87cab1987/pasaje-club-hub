@@ -232,6 +232,14 @@ export const academia = {
 // Presupuestos: se arman en el panel web (es un editor de 3.500 lineas que
 // en un telefono seria peor que abrir la web). Desde la app se listan, se
 // comparten y se duplican, que es lo que se necesita estando afuera.
+export const comisiones = {
+  resumen:       (params) => api.get('hub_comisiones.php', 'resumen', params),
+  mis:           (params) => api.get('hub_comisiones.php', 'mis', params),
+  periodos:      ()       => api.get('hub_comisiones.php', 'periodos'),
+  liquidaciones: (id)     => api.get('hub_comisiones.php', 'liquidaciones', id ? { id } : {}),
+  equipo:        (params) => api.get('hub_comisiones.php', 'equipo', params),
+};
+
 export const expedientes = {
   mis:     (params) => api.get('hub_expedientes.php', 'mis', params),
   de:      (vendedor_id, params) => api.get('hub_expedientes.php', 'de', { vendedor_id, ...(params || {}) }),
