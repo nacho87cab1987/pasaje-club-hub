@@ -149,15 +149,17 @@ export default function ExpedienteScreen({ route, navigation }) {
             {e.lista_pasajeros.map((p, i) => (
               <View key={p.id} style={[s.pax, i < e.lista_pasajeros.length - 1 && s.borde]}>
                 <MaterialIcons
-                  name={p.pasaporte_numero ? 'badge' : 'person-outline'}
+                  name={p.pasaporte ? 'badge' : 'person-outline'}
                   size={18}
-                  color={p.pasaporte_numero ? C.tealDeep : C.ink3}
+                  color={p.pasaporte ? C.tealDeep : C.ink3}
                 />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.paxN}>{[p.nombre, p.apellido].filter(Boolean).join(' ')}</Text>
+                  <Text style={s.paxN}>
+                    {[p.nombre, p.apellido].filter(Boolean).join(' ') || 'Pasajero sin nombre'}
+                  </Text>
                   <Text style={s.paxD}>
                     {p.documento ? `DNI ${p.documento}` : 'Sin documento'}
-                    {p.pasaporte_numero ? ` · Pasaporte ${p.pasaporte_numero}` : ''}
+                    {p.pasaporte ? ` · Pasaporte ${p.pasaporte}` : ''}
                   </Text>
                 </View>
               </View>
