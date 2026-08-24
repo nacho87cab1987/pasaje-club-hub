@@ -44,6 +44,7 @@ import OrganigramaScreen from '../screens/OrganigramaScreen';
 import PersonaScreen from '../screens/PersonaScreen';
 import NotificacionesScreen from '../screens/NotificacionesScreen';
 import PresupuestosScreen from '../screens/PresupuestosScreen';
+import CumpleanosScreen from '../screens/CumpleanosScreen';
 import { AdminScreen, AdminPersonaScreen } from '../screens/AdminScreen';
 
 const Tab = createBottomTabNavigator();
@@ -159,6 +160,7 @@ export default function RootNavigator() {
             <Stack.Screen name="Persona" component={PersonaScreen} options={{ title: '' }} />
             <Stack.Screen name="Notificaciones" component={NotificacionesScreen} options={{ title: 'Novedades' }} />
             <Stack.Screen name="Presupuestos" component={PresupuestosScreen} options={{ title: 'Presupuestos' }} />
+            <Stack.Screen name="Cumpleanos" component={CumpleanosScreen} options={{ title: 'Cumpleaños' }} />
             <Stack.Screen name="Pendiente" component={PendienteScreen} options={{ title: '' }} />
           </>
         )}

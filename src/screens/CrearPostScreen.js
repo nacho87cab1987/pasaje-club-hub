@@ -10,10 +10,12 @@ import { Cargando, ErrorBox, Boton, Card } from '../components/UI';
 import { C, R } from '../theme';
 import { imagenUrl } from '../api/client';
 
-export default function CrearPostScreen({ navigation }) {
+export default function CrearPostScreen({ navigation, route }) {
   const [opciones, setOpciones] = useState(null);
   const [error, setError] = useState(null);
-  const [cuerpo, setCuerpo] = useState('');
+  // Puede venir un texto armado desde otra pantalla, por ejemplo el saludo
+  // de cumpleaños. Se deja editable: nadie quiere mandar un saludo generico.
+  const [cuerpo, setCuerpo] = useState(route?.params?.textoInicial || '');
   const [titulo, setTitulo] = useState('');
   const [alcance, setAlcance] = useState('general');
   const [grupos, setGrupos] = useState([]);

@@ -191,7 +191,7 @@ export default function InicioScreen({ navigation }) {
         )}
         ListHeaderComponent={(
           <>
-            {cumples.length ? <Cumples items={cumples} /> : null}
+            {cumples.length ? <Cumples items={cumples} onVerTodos={() => navigation.navigate('Cumpleanos')} /> : null}
             <Pressable style={[s.componer, sombra]} onPress={() => navigation.navigate('CrearPost')}>
               <Avatar texto={iniciales(persona && persona.nombre, persona && persona.apellido)} tam={34} />
               <Text style={s.componerTxt}>Compartí algo con el equipo</Text>
@@ -216,7 +216,7 @@ export default function InicioScreen({ navigation }) {
   );
 }
 
-function Cumples({ items }) {
+function Cumples({ items, onVerTodos }) {
   const hoy = items.filter((c) => c.hoy);
   const proximos = items.filter((c) => !c.hoy).slice(0, 6);
   const lista = hoy.length ? hoy : proximos;
@@ -225,12 +225,13 @@ function Cumples({ items }) {
 
   return (
     <View style={[s.cumples, esHoy && { backgroundColor: C.navy }]}>
-      <View style={s.cumplesTop}>
+      <Pressable style={s.cumplesTop} onPress={onVerTodos}>
         <MaterialIcons name="cake" size={16} color={esHoy ? C.teal : C.tealDeep} />
         <Text style={[s.cumplesTit, esHoy && { color: C.teal }]}>
           {esHoy ? 'CUMPLEN HOY' : 'PROXIMOS CUMPLEAÑOS'}
         </Text>
-      </View>
+        <MaterialIcons name="chevron-right" size={17} color={esHoy ? C.teal : C.ink3} />
+      </Pressable>
       <View style={s.cumplesRow}>
         {lista.map((c) => (
           <View key={c.id} style={{ alignItems: 'center', width: 64 }}>
