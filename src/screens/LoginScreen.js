@@ -88,7 +88,7 @@ export default function LoginScreen() {
           <Boton texto="Entrar" onPress={enviar} cargando={cargando} />
         </View>
 
-        <Text style={s.pie}>Si no podes entrar, escribile a Nacho.</Text>
+        <Text style={s.pie}>Si no podes entrar, escribile a administracion.</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
