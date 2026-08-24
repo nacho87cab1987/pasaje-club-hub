@@ -9,6 +9,7 @@
 
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { auth } from './api/client';
 
@@ -44,7 +45,14 @@ export async function registrarPush() {
   }
   if (status !== 'granted') return null;
 
-  const { data: token } = await Notifications.getDevicePushTokenAsync();
+  // Token de Expo, no el nativo de APNs. El servidor le manda a Expo y Expo
+  // se encarga de Apple y de Google: sin eso habria que manejar dos
+  // protocolos y sus credenciales del lado del servidor.
+  const projectId = Constants?.expoConfig?.extra?.eas?.projectId
+                 || Constants?.easConfig?.projectId;
+  if (!projectId) return null;
+
+  const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
   if (!token) return null;
 
   await auth.registrarPush(
@@ -68,6 +76,12 @@ export function escucharToques(navegarA) {
   return () => sub.remove();
 }
 
+/** Cuantas sin leer: es el numero del globito sobre el icono de la app. */
+export async function ponerBadge(n) {
+  try { await Notifications.setBadgeCountAsync(Math.max(0, n | 0)); }
+  catch (e) { /* Android puede no soportarlo segun el launcher */ }
+}
+
 /**
  * Traduce la ruta del servidor a una pantalla de la app.
  * Si aparece una ruta que esta version no conoce (porque el servidor ya
@@ -79,6 +93,8 @@ export function rutaAPantalla(ruta) {
     case 'post':     return ['Inicio', { postId: id }];
     case 'persona':  return ['Personas', { personaId: id }];
     case 'crm':      return ['CRM', { conversacionId: id }];
+    case 'tarea':    return ['Tarea', { id }];
+    case 'documento':return ['Documentos', {}];
     case 'modulo':   return ['Apps', { slug: id }];
     default:         return ['Inicio', {}];
   }

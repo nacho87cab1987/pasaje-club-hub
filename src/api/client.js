@@ -223,6 +223,13 @@ export const academia = {
   resumen:      ()   => api.get('hub_academia.php', 'resumen'),
 };
 
+export const notificaciones = {
+  listar: ()   => api.get('hub_push.php', 'listar'),
+  leidas: (id) => api.post('hub_push.php', 'leidas', id ? { id } : {}),
+  probar: ()   => api.post('hub_push.php', 'probar', {}),
+  estado: ()   => api.get('hub_push.php', 'estado'),
+};
+
 export const organigrama = {
   arbol:       ()    => api.get('hub_organigrama.php', 'arbol'),
   persona:     (id)  => api.get('hub_organigrama.php', 'persona', { id }),

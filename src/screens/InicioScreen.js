@@ -4,7 +4,8 @@ import {
   Image, Dimensions, Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { muro, perfil as perfilApi, imagenUrl } from '../api/client';
+import { muro, perfil as perfilApi, imagenUrl, notificaciones } from '../api/client';
+import { ponerBadge } from '../push';
 import { useAuth } from '../context/AuthContext';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
 import { C, R, sombra, iniciales } from '../theme';
@@ -35,17 +36,35 @@ export default function InicioScreen({ navigation }) {
   const [masCargando, setMasCargando] = useState(false);
   const [siguiente, setSiguiente] = useState(null);
   const vistos = useRef(new Set());
+  const [sinLeer, setSinLeer] = useState(0);
+
+  // La campanita con el contador: sin eso, las notificaciones existen pero
+  // no hay forma de volver a verlas desde la app.
+  useEffect(() => navigation.setOptions({
+    headerRight: () => (
+      <Pressable onPress={() => navigation.navigate('Notificaciones')} hitSlop={10} style={{ marginRight: 4 }}>
+        <MaterialIcons name="notifications-none" size={24} color={C.navy} />
+        {sinLeer > 0 ? (
+          <View style={s.campana}>
+            <Text style={s.campanaN}>{sinLeer > 9 ? '9+' : sinLeer}</Text>
+          </View>
+        ) : null}
+      </Pressable>
+    ),
+  }), [navigation, sinLeer]);
 
   const cargar = useCallback(async () => {
     setError(null);
     try {
-      const [f, c] = await Promise.all([
+      const [f, c, n] = await Promise.all([
         muro.feed(),
         perfilApi.cumples(30).catch(() => ({ items: [] })),
+        notificaciones.listar().catch(() => null),
       ]);
       setItems(f.items);
       setSiguiente(f.siguiente);
       setCumples(c.items || []);
+      if (n) { setSinLeer(n.no_leidas || 0); ponerBadge(n.no_leidas || 0); }
     } catch (e) {
       setError(e.message);
       setItems([]);
@@ -386,6 +405,11 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   masTxt: { color: '#fff', fontSize: 21, fontWeight: '700' },
+  campana: {
+    position: 'absolute', top: -4, right: -6, minWidth: 17, height: 17, borderRadius: 9,
+    backgroundColor: C.bordo, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+  },
+  campanaN: { color: '#fff', fontSize: 10, fontWeight: '700' },
   cumples: { backgroundColor: '#fff', borderRadius: R.xl, padding: 14, marginBottom: 11 },
   cumplesTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 11 },
   cumplesTit: { fontSize: 11, fontWeight: '700', letterSpacing: 1.1, color: C.tealDeep },
