@@ -6,19 +6,12 @@
     "orientation": "portrait",
     "scheme": "pasajeclub",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#072E40"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.pasajeclub.hub",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "icon": "./assets/icon.png"
+      }
     },
     "android": {
       "package": "com.pasajeclub.hub",
@@ -26,7 +19,6 @@
         "foregroundImage": "./assets/isotipo.png",
         "backgroundColor": "#072E40"
       },
-      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
@@ -35,6 +27,15 @@
       ]
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#072E40",
+          "imageWidth": 220
+        }
+      ],
       [
         "expo-notifications",
         {
