@@ -8,7 +8,7 @@ import { C, R, sombra, icono } from '../theme';
 // Las pantallas que ya existen. El resto de los modulos habilitados muestran
 // la pantalla "en construccion" con su nombre, en vez de desaparecer: si el
 // servidor lo habilito, la persona tiene que verlo.
-const IMPLEMENTADOS = { personas: 'Personas', admin: 'Admin', crm: 'CRM', gestion: 'Gestion', documentos: 'Documentos', academia: 'Academia', organigrama: 'Organigrama' };
+const IMPLEMENTADOS = { personas: 'Personas', admin: 'Admin', crm: 'CRM', gestion: 'Gestion', documentos: 'Documentos', academia: 'Academia', organigrama: 'Organigrama', presupuestos: 'Presupuestos' };
 
 const TITULOS = {
   general: 'General',

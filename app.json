@@ -23,10 +23,6 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
@@ -72,6 +68,7 @@
     },
     "updates": {
       "url": "https://u.expo.dev/b3a77918-2a8b-47b1-993c-649516baf1af"
-    }
+    },
+    "owner": "pasaje-club"
   }
 }

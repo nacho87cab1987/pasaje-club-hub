@@ -76,6 +76,40 @@ export function escucharToques(navegarA) {
   return () => sub.remove();
 }
 
+/**
+ * Por que el push no esta andando. Cada motivo tiene una accion distinta,
+ * asi que decir solo "no funciona" no alcanza.
+ */
+export async function diagnosticoPush() {
+  if (!Device.isDevice) {
+    return { listo: false, motivo: 'El simulador no recibe notificaciones.' };
+  }
+
+  const projectId = Constants?.expoConfig?.extra?.eas?.projectId
+                 || Constants?.easConfig?.projectId;
+  if (!projectId) {
+    return { listo: false, motivo: 'Falta la configuracion del proyecto (projectId).' };
+  }
+
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status === 'denied') {
+    return { listo: false, permiso: status,
+             motivo: 'Permiso denegado. Activalo en Ajustes del telefono.' };
+  }
+  if (status !== 'granted') {
+    return { listo: false, permiso: status, motivo: 'Tocá para dar permiso.' };
+  }
+
+  try {
+    const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
+    return data
+      ? { listo: true, permiso: status, token: String(data).slice(0, 28) + '...' }
+      : { listo: false, permiso: status, motivo: 'No pude obtener el token.' };
+  } catch (e) {
+    return { listo: false, permiso: status, motivo: String(e.message || e).slice(0, 120) };
+  }
+}
+
 /** Cuantas sin leer: es el numero del globito sobre el icono de la app. */
 export async function ponerBadge(n) {
   try { await Notifications.setBadgeCountAsync(Math.max(0, n | 0)); }

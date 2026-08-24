@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, RefreshControl } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable, RefreshControl, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { notificaciones } from '../api/client';
-import { ponerBadge, rutaAPantalla } from '../push';
+import { ponerBadge, rutaAPantalla, registrarPush, diagnosticoPush } from '../push';
 import { Cargando, ErrorBox, Vacio } from '../components/UI';
 import { C, R, sombra } from '../theme';
 
@@ -27,6 +27,45 @@ export default function NotificacionesScreen({ navigation }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
+  const [push, setPush] = useState(null);
+
+  // Si el push no quedo activo hay que poder verlo y reintentarlo desde la
+  // app: pedir permiso solo al iniciar sesion deja afuera a quien ya estaba
+  // logueado cuando se agrego la funcion.
+  useEffect(() => { diagnosticoPush().then(setPush).catch(() => {}); }, []);
+
+  const probar = async () => {
+    try {
+      const r = await notificaciones.probar();
+      if (r.enviados > 0) {
+        Alert.alert(
+          'Enviada',
+          'Baja la app a segundo plano: con la app abierta iOS no muestra el banner.',
+        );
+      } else {
+        // Decir QUE fallo: sin esto "no llego" puede ser el permiso, el
+        // token, o el servicio de Expo, y cada uno se arregla distinto.
+        const motivo = (r.errores && r.errores[0]) || 'ningun dispositivo registrado';
+        Alert.alert('No se pudo enviar', String(motivo));
+      }
+      await cargar();
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  const activar = async () => {
+    const r = await registrarPush();
+    const d = await diagnosticoPush();
+    setPush(d);
+    if (r) Alert.alert('Listo', 'Las notificaciones quedaron activadas.');
+    else if (d.permiso === 'denied') {
+      Alert.alert('Permiso denegado',
+        'Activalas desde Ajustes del telefono > Pasaje Club > Notificaciones.');
+    } else {
+      Alert.alert('No se pudo activar', d.motivo || 'Proba de nuevo en un momento.');
+    }
+  };
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -42,11 +81,16 @@ export default function NotificacionesScreen({ navigation }) {
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        items && items.some((x) => !Number(x.leida)) ? (
-          <Pressable onPress={marcarTodas} hitSlop={10}>
-            <Text style={s.todas}>Marcar leidas</Text>
+        <View style={s.acciones}>
+          {items && items.some((x) => !Number(x.leida)) ? (
+            <Pressable onPress={marcarTodas} hitSlop={10}>
+              <Text style={s.todas}>Marcar leidas</Text>
+            </Pressable>
+          ) : null}
+          <Pressable onPress={probar} hitSlop={10}>
+            <MaterialIcons name="notifications-active" size={21} color={C.tealDeep} />
           </Pressable>
-        ) : null
+        </View>
       ),
     });
   }, [items, navigation]);
@@ -84,6 +128,27 @@ export default function NotificacionesScreen({ navigation }) {
           onRefresh={async () => { setRefrescando(true); await cargar(); setRefrescando(false); }}
         />
       )}
+      ListHeaderComponent={push ? (
+        push.listo ? (
+          <Pressable style={s.ok} onPress={probar}>
+            <MaterialIcons name="notifications-active" size={19} color={C.ok} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.okTit}>Notificaciones activas</Text>
+              <Text style={s.okSub}>Tocá para mandarte una de prueba</Text>
+            </View>
+            <MaterialIcons name="send" size={17} color={C.ok} />
+          </Pressable>
+        ) : (
+          <Pressable style={s.activar} onPress={activar}>
+            <MaterialIcons name="notifications-off" size={20} color={C.warn} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.activarTit}>Las notificaciones estan apagadas</Text>
+              <Text style={s.activarSub}>{push.motivo || 'Tocá para activarlas'}</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={C.warn} />
+          </Pressable>
+        )
+      ) : null}
       ListEmptyComponent={(
         <Vacio icono="notifications-none" titulo="Sin novedades"
           texto="Cuando publiquen algo o te asignen una tarea, te avisamos aca." />
@@ -125,5 +190,18 @@ const s = StyleSheet.create({
   cuerpo: { fontSize: 13, color: C.ink2, marginTop: 2, lineHeight: 18 },
   hora: { fontSize: 11, color: C.ink3, marginTop: 4 },
   punto: { width: 9, height: 9, borderRadius: 5, backgroundColor: C.teal, marginTop: 6 },
+  acciones: { flexDirection: 'row', alignItems: 'center', gap: 14, marginRight: 4 },
+  ok: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#E1F5EE',
+    borderRadius: R.md, padding: 12, marginBottom: 12,
+  },
+  okTit: { fontSize: 13.5, fontWeight: '700', color: '#1B5E3F' },
+  okSub: { fontSize: 11.5, color: '#1B5E3F', marginTop: 1 },
+  activar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FAEEDA',
+    borderRadius: R.md, padding: 13, marginBottom: 12,
+  },
+  activarTit: { fontSize: 14, fontWeight: '700', color: '#854F0B' },
+  activarSub: { fontSize: 12, color: '#854F0B', marginTop: 2, lineHeight: 16 },
   todas: { fontSize: 13, fontWeight: '600', color: C.tealDeep, marginRight: 4 },
 });

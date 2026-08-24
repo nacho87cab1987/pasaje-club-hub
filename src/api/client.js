@@ -42,7 +42,13 @@ class ApiError extends Error {
 export { ApiError };
 
 async function request(archivo, action, { method = 'GET', body, params, timeout = 15000 } = {}) {
-  const qs = new URLSearchParams({ action, ...(params || {}) }).toString();
+  // Los valores vacios se sacan: sin esto un parametro sin definir viaja
+  // como la cadena "undefined" y el servidor lo toma como un filtro real.
+  const limpio = {};
+  for (const [k, v] of Object.entries({ action, ...(params || {}) })) {
+    if (v !== null && v !== undefined && v !== '') limpio[k] = v;
+  }
+  const qs = new URLSearchParams(limpio).toString();
   const url = `${API}/${archivo}?${qs}`;
 
   const headers = { Accept: 'application/json' };
@@ -221,6 +227,17 @@ export const academia = {
   curso:        (id) => api.get('hub_academia.php', 'curso', { id }),
   certificados: ()   => api.get('hub_academia.php', 'certificados'),
   resumen:      ()   => api.get('hub_academia.php', 'resumen'),
+};
+
+// Presupuestos: se arman en el panel web (es un editor de 3.500 lineas que
+// en un telefono seria peor que abrir la web). Desde la app se listan, se
+// comparten y se duplican, que es lo que se necesita estando afuera.
+export const presupuestos = {
+  listar:      (params)   => api.get('presupuestos.php', 'list', params),
+  get:         (id)       => api.get('presupuestos.php', 'get', { id }),
+  publicar:    (id)       => api.post('presupuestos.php', 'publicar', { id }),
+  despublicar: (id)       => api.post('presupuestos.php', 'despublicar', { id }),
+  duplicar:    (id)       => api.post('presupuestos.php', 'duplicar', { id }),
 };
 
 export const notificaciones = {

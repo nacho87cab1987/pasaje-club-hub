@@ -45,7 +45,17 @@ export default function CrmChatScreen({ route, navigation }) {
   const [conv, setConv] = useState(null);
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState(null);
-  const [texto, setTexto] = useState('');
+  const [texto, setTexto] = useState(route.params?.textoInicial || '');
+
+  // Al volver de elegir un presupuesto, el link llega listo para revisar y
+  // mandar. No se envia solo: la vendedora decide que decir alrededor.
+  useEffect(() => {
+    const t = route.params?.textoInicial;
+    if (t) {
+      setTexto(t);
+      navigation.setParams({ textoInicial: undefined });
+    }
+  }, [route.params?.textoInicial]);
   const [enviando, setEnviando] = useState(false);
   const [modoNota, setModoNota] = useState(false);
   const [plantillas, setPlantillas] = useState([]);
@@ -180,6 +190,10 @@ export default function CrmChatScreen({ route, navigation }) {
 
   const menuPrincipal = () => {
     Alert.alert('Conversacion', null, [
+      // Lo mas util del modulo: estas hablando con el cliente y le mandas
+      // el presupuesto sin salir de la conversacion.
+      { text: 'Enviar presupuesto',
+        onPress: () => navigation.navigate('Presupuestos', { conversacionId: id }) },
       { text: 'Datos del cliente', onPress: () => setVerFicha(true) },
       { text: 'Etiquetas', onPress: () => setVerEtiquetas(true) },
       { text: 'Cambiar estado', onPress: cambiarEstado },
