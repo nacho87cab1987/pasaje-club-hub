@@ -10,20 +10,62 @@ import { C, R } from './theme';
 // Vibration, que es parte del nucleo de React Native y siempre existe: la
 // diferencia se siente, pero nunca queda sin respuesta al dedo.
 let Haptics = null;
-try { Haptics = require('expo-haptics'); } catch (e) { Haptics = null; }
+let motivoHaptics = 'no intentado';
+try {
+  Haptics = require('expo-haptics');
+  motivoHaptics = Haptics && Haptics.impactAsync ? 'disponible' : 'cargado sin impactAsync';
+} catch (e) {
+  Haptics = null;
+  motivoHaptics = 'no instalado: ' + String(e.message || e).slice(0, 60);
+}
+
+/** Que paso con la vibracion. Se usa desde el diagnostico del perfil. */
+export function estadoVibracion() {
+  return {
+    haptics: motivoHaptics,
+    ultimo: ultimoIntento,
+    plataforma: Platform.OS,
+  };
+}
+
+let ultimoIntento = 'todavia no se uso';
 
 export function vibrar(fuerte = false) {
-  try {
-    if (Haptics && Haptics.impactAsync) {
-      Haptics.impactAsync(
-        fuerte ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light,
-      );
-      return;
+  // 1. Lo mejor: el motor haptico. Da el golpe seco de iOS.
+  if (Haptics) {
+    try {
+      if (Haptics.impactAsync && Haptics.ImpactFeedbackStyle) {
+        Haptics.impactAsync(
+          fuerte ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light,
+        );
+        ultimoIntento = 'haptics.impactAsync';
+        return;
+      }
+      if (Haptics.selectionAsync) {
+        Haptics.selectionAsync();
+        ultimoIntento = 'haptics.selectionAsync';
+        return;
+      }
+    } catch (e) {
+      ultimoIntento = 'haptics fallo: ' + String(e.message || e).slice(0, 50);
     }
-  } catch (e) { /* sigue al respaldo */ }
-  // En iOS, Vibration.vibrate() ignora la duracion y siempre da el mismo
-  // golpe; en Android si la respeta.
-  Vibration.vibrate(Platform.OS === 'android' ? (fuerte ? 22 : 12) : 12);
+  }
+
+  // 2. Respaldo: el vibrador comun.
+  //
+  // En iOS, Vibration.vibrate() ignora la duracion y dispara la vibracion
+  // completa del sistema. No es sutil, pero se siente. Solo queda muda si el
+  // telefono tiene la vibracion apagada en Ajustes.
+  try {
+    if (Platform.OS === 'android') {
+      Vibration.vibrate(fuerte ? 25 : 12);
+    } else {
+      Vibration.vibrate();
+    }
+    ultimoIntento = 'Vibration.vibrate';
+  } catch (e) {
+    ultimoIntento = 'Vibration fallo: ' + String(e.message || e).slice(0, 50);
+  }
 }
 
 const ANCHO_MENU = 232;

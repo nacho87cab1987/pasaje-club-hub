@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { Card, Boton } from '../components/UI';
 import { perfil as perfilApi, imagenUrl } from '../api/client';
+import { vibrar, estadoVibracion } from '../MenuContextual';
 import { C, R, sombra, iniciales } from '../theme';
 
 export default function PerfilScreen({ navigation }) {
@@ -91,7 +92,22 @@ export default function PerfilScreen({ navigation }) {
           <Boton texto="Cerrar sesion" tipo="borde" icono="logout" onPress={confirmarSalida} />
         </View>
 
-        <Text style={s.version}>Pasaje Club · version 1.0.0</Text>
+        <Pressable
+        style={s.probarVibra}
+        onPress={() => {
+          vibrar(true);
+          const e = estadoVibracion();
+          Alert.alert(
+            'Prueba de vibracion',
+            `Metodo: ${e.ultimo}\nModulo: ${e.haptics}\n\nSi no sentiste nada, fijate en Ajustes del telefono > Sonidos y vibracion.`,
+          );
+        }}
+      >
+        <MaterialIcons name="vibration" size={17} color={C.ink3} />
+        <Text style={s.probarVibraTxt}>Probar vibracion</Text>
+      </Pressable>
+
+      <Text style={s.version}>Pasaje Club · version 1.0.0</Text>
       </View>
     </ScrollView>
   );
@@ -149,5 +165,10 @@ const s = StyleSheet.create({
   },
   hdrTxt: { fontSize: 14.5, fontWeight: '700', color: C.ink },
   linea: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 13 },
+  probarVibra: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    paddingVertical: 12, marginTop: 10,
+  },
+  probarVibraTxt: { fontSize: 13, color: C.ink3 },
   version: { textAlign: 'center', color: C.ink3, fontSize: 12.5, marginTop: 22 },
 });
