@@ -6,6 +6,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { crmApi, imagenUrl, etiquetasApi } from '../api/client';
 import { elegirImagenes } from '../imagenes';
+import VisorImagen from '../VisorImagen';
 import { useAuth } from '../context/AuthContext';
 import { Cargando, ErrorBox, Tag } from '../components/UI';
 import { ordenEstados, estadoDe, cargarEstados, hayCatalogo } from '../estados';
@@ -63,6 +64,7 @@ export default function CrmChatScreen({ route, navigation }) {
   const [etiquetas, setEtiquetas] = useState([]);
   const [verEtiquetas, setVerEtiquetas] = useState(false);
   const [falla, setFalla] = useState({});
+  const [viendo, setViendo] = useState(null);
   const [nuevaEti, setNuevaEti] = useState('');
   const [colorEti, setColorEti] = useState(PALETA[0]);
   const [creandoEti, setCreandoEti] = useState(false);
@@ -317,7 +319,18 @@ export default function CrmChatScreen({ route, navigation }) {
               <View style={[s.burbuja, mio ? s.mia : s.suya]}>
                 {(item.adjuntos || []).map((a) => (
                   a.tipo === 'imagen' ? (
-                    <Image key={a.id} source={{ uri: imagenUrl(a.archivo_path) }} style={s.adjImg} />
+                    <Pressable
+                      key={a.id}
+                      onPress={() => setViendo({
+                        uri: imagenUrl(a.archivo_path),
+                        nombre: a.nombre_original,
+                      })}
+                    >
+                      <Image source={{ uri: imagenUrl(a.archivo_path) }} style={s.adjImg} />
+                      <View style={s.lupa}>
+                        <MaterialIcons name="zoom-out-map" size={15} color="#fff" />
+                      </View>
+                    </Pressable>
                   ) : a.tipo === 'audio' ? (
                     <Reproductor key={a.id} uri={imagenUrl(a.archivo_path)} claro={mio} />
                   ) : (
@@ -364,7 +377,11 @@ export default function CrmChatScreen({ route, navigation }) {
           {adjuntos.map((a, i) => (
             <View key={a.adjunto_id} style={s.adjMini}>
               {a.tipo === 'imagen'
-                ? <Image source={{ uri: a.url }} style={s.adjMiniImg} />
+                ? (
+                  <Pressable onPress={() => setViendo({ uri: a.url, nombre: a.nombre })}>
+                    <Image source={{ uri: a.url }} style={s.adjMiniImg} />
+                  </Pressable>
+                )
                 : (
                   <View style={[s.adjMiniImg, s.adjMiniDoc]}>
                     <MaterialIcons name={a.tipo === 'audio' ? 'mic' : 'description'} size={22} color={C.tealDeep} />
@@ -516,6 +533,13 @@ export default function CrmChatScreen({ route, navigation }) {
         </View>
       </Hoja>
 
+      <VisorImagen
+        visible={!!viendo}
+        uri={viendo && viendo.uri}
+        nombre={viendo && viendo.nombre}
+        onCerrar={() => setViendo(null)}
+      />
+
       <FichaCliente
         visible={verFicha}
         conv={conv}
@@ -627,6 +651,10 @@ const s = StyleSheet.create({
   eti: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   etiTxt: { color: '#fff', fontSize: 10, fontWeight: '700' },
   adjImg: { width: 210, height: 150, borderRadius: 10, marginBottom: 6, backgroundColor: C.lineSoft },
+  lupa: {
+    position: 'absolute', right: 7, bottom: 13, width: 25, height: 25, borderRadius: 13,
+    backgroundColor: 'rgba(7,45,64,0.55)', alignItems: 'center', justifyContent: 'center',
+  },
   adjDoc: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 },
   adjDocTxt: { fontSize: 13, color: C.ink, flex: 1 },
   adjBarra: { maxHeight: 84, paddingHorizontal: 11, paddingTop: 9, backgroundColor: '#fff' },

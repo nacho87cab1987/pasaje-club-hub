@@ -6,6 +6,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { muro, perfil as perfilApi, imagenUrl, notificaciones } from '../api/client';
 import { ponerBadge } from '../push';
+import VisorImagen from '../VisorImagen';
 import { useAuth } from '../context/AuthContext';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
 import { C, R, sombra, iniciales } from '../theme';
@@ -37,6 +38,7 @@ export default function InicioScreen({ navigation }) {
   const [siguiente, setSiguiente] = useState(null);
   const vistos = useRef(new Set());
   const [sinLeer, setSinLeer] = useState(0);
+  const [viendo, setViendo] = useState(null);
 
   // La campanita con el contador: sin eso, las notificaciones existen pero
   // no hay forma de volver a verlas desde la app.
@@ -208,9 +210,16 @@ export default function InicioScreen({ navigation }) {
             post={item}
             onReaccion={reaccionar}
             onAbrir={() => navigation.navigate('Post', { id: item.id })}
+            onAmpliar={(m) => setViendo({ uri: m.url, nombre: null })}
             onMenu={tieneMenu(item) ? () => menu(item) : null}
           />
         )}
+      />
+
+      <VisorImagen
+        visible={!!viendo}
+        uri={viendo && viendo.uri}
+        onCerrar={() => setViendo(null)}
       />
     </View>
   );
@@ -255,7 +264,7 @@ function Cumples({ items, onVerTodos }) {
   );
 }
 
-function Post({ post, onReaccion, onAbrir, onMenu }) {
+function Post({ post, onReaccion, onAbrir, onMenu, onAmpliar }) {
   const [abanico, setAbanico] = useState(false);
   const a = post.autor || {};
   const partes = String(a.nombre || '').split(' ');
@@ -295,7 +304,9 @@ function Post({ post, onReaccion, onAbrir, onMenu }) {
       {post.titulo ? <Text style={s.titulo}>{post.titulo}</Text> : null}
       {post.cuerpo ? <Text style={s.cuerpo}>{post.cuerpo}</Text> : null}
 
-      {post.media && post.media.length ? <Galeria media={post.media} onAbrir={onAbrir} /> : null}
+      {post.media && post.media.length
+        ? <Galeria media={post.media} onAbrir={onAbrir} onAmpliar={onAmpliar} />
+        : null}
 
       {abanico ? (
         <View style={s.abanico}>
@@ -364,7 +375,7 @@ function Foto({ uri, style }) {
  * Una foto sola respeta su proporcion real; varias van en grilla cuadrada.
  * Reservar la altura correcta evita el salto del feed cuando carga la imagen.
  */
-function Galeria({ media, onAbrir }) {
+function Galeria({ media, onAbrir, onAmpliar }) {
   const ancho = Dimensions.get('window').width - 56;
 
   if (media.length === 1) {
@@ -372,7 +383,11 @@ function Galeria({ media, onAbrir }) {
     const prop = m.ancho && m.alto ? m.alto / m.ancho : 0.66;
     const alto = Math.min(ancho * prop, 420);
     return (
-      <Pressable onPress={onAbrir} style={{ marginTop: 11 }}>
+      <Pressable
+        onPress={onAbrir}
+        onLongPress={() => onAmpliar && onAmpliar(m)}
+        style={{ marginTop: 11 }}
+      >
         <Foto uri={imagenUrl(m.url)} style={[s.foto, { width: ancho, height: alto }]} />
       </Pressable>
     );
@@ -382,7 +397,7 @@ function Galeria({ media, onAbrir }) {
   return (
     <View style={s.grilla}>
       {media.slice(0, 4).map((m, i) => (
-        <Pressable key={m.url} onPress={onAbrir}>
+        <Pressable key={m.url} onPress={onAbrir} onLongPress={() => onAmpliar && onAmpliar(m)}>
           <Foto uri={imagenUrl(m.miniatura_url || m.url)} style={[s.foto, { width: lado, height: lado }]} />
           {i === 3 && media.length > 4 ? (
             <View style={[s.mas, { width: lado, height: lado }]}>

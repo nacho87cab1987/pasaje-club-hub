@@ -167,6 +167,7 @@ export function crmApi(credencial) {
     nota:      (id, contenido, adjunto_ids) =>
       api.post('crm_conversaciones.php', 'nota', { id, contenido, adjunto_ids }),
     leida:     (id)            => llamar('marcar_leida', 'POST', { id }),
+    noLeida:   (id)            => llamar('marcar_no_leida', 'POST', { id }),
     estado:    (id, estado, prioridad) => llamar('cambiar_estado', 'POST', { id, estado, prioridad }),
 
     // Estas dos son iguales para todos: no tienen variante _admin.

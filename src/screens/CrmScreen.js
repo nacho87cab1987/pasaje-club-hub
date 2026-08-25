@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, StyleSheet, Pressable, RefreshControl,
+  Animated, Modal, ScrollView, Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { crmApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
 import { filtros, estadoDe, cargarEstados, hayCatalogo } from '../estados';
+import FilaDeslizable from '../FilaDeslizable';
 import { C, R, sombra, iniciales } from '../theme';
 
 
@@ -42,6 +44,9 @@ export default function CrmScreen({ navigation }) {
   const [q, setQ] = useState('');
   const [refrescando, setRefrescando] = useState(false);
   const [listo, setListo] = useState(hayCatalogo());
+  const [vendedores, setVendedores] = useState([]);
+  const [vendedorId, setVendedorId] = useState(null);
+  const [verVendedores, setVerVendedores] = useState(false);
   const [avisoCatalogo, setAvisoCatalogo] = useState(null);
 
   // El catalogo de estados lo define el servidor: nombres, colores y orden.
@@ -61,16 +66,19 @@ export default function CrmScreen({ navigation }) {
     setError(null);
     try {
       const r = await crm.lista({
+        ...(vendedorId ? { vendedor_id: vendedorId } : {}),
         estado: est || 'todas',
         ...(busqueda ? { q: busqueda } : {}),
       });
       setItems(r.items || []);
+      // El servidor solo manda la lista si la persona supervisa a alguien.
+      if (r.vendedores_filtrables) setVendedores(r.vendedores_filtrables);
       setContadores(r.contadores || {});
     } catch (e) {
       setError(e.message);
       setItems([]);
     }
-  }, [boot && boot.credencial]);
+  }, [boot && boot.credencial, vendedorId]);
 
   // Al volver de un chat pueden haber cambiado los no leidos.
   useEffect(() => navigation.addListener('focus', () => cargar(estado, q.trim())), [navigation, cargar, estado, q]);
@@ -80,11 +88,41 @@ export default function CrmScreen({ navigation }) {
     return () => clearTimeout(t);
   }, [estado, q, cargar]);
 
+  const alternarLeido = async (conv) => {
+    const sinLeer = Number(conv.no_leidos_vendedor || conv.no_leidos_admin || 0) > 0;
+    const antes = items;
+    // Optimista: la lista responde al gesto, no a la red.
+    setItems((xs) => xs.map((x) => (x.id === conv.id
+      ? { ...x, no_leidos_vendedor: sinLeer ? 0 : 1, no_leidos_admin: sinLeer ? 0 : 1 }
+      : x)));
+    try {
+      await (sinLeer ? crm.leida(conv.id) : crm.noLeida(conv.id));
+      cargar(estado, q.trim());
+    } catch (e) {
+      setItems(antes);
+      Alert.alert('No se pudo', e.message);
+    }
+  };
+
+  const vendedorActual = vendedores.find((v) => v.id === vendedorId);
+
   if (items === null || !listo) return <Cargando texto="Cargando conversaciones" />;
   if (error && !items.length) return <ErrorBox mensaje={error} onReintentar={() => cargar(estado, q.trim())} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
+      {vendedores.length > 1 ? (
+        <Pressable style={s.filtroVend} onPress={() => setVerVendedores(true)}>
+          <MaterialIcons name={vendedorActual ? 'person' : 'groups'} size={17} color={C.tealDeep} />
+          <Text style={s.filtroVendTxt} numberOfLines={1}>
+            {vendedorActual
+              ? `${vendedorActual.nombre || ''} ${vendedorActual.apellido || ''}`.trim()
+              : 'Todo el equipo'}
+          </Text>
+          <MaterialIcons name="expand-more" size={19} color={C.tealDeep} />
+        </Pressable>
+      ) : null}
+
       <View style={s.buscador}>
         <MaterialIcons name="search" size={20} color={C.ink3} />
         <TextInput
@@ -151,6 +189,11 @@ export default function CrmScreen({ navigation }) {
           const canal = String(item.canal || 'manual').toLowerCase();
           const est = estadoDe(item.estado);
           return (
+            <FilaDeslizable
+              onAccion={() => alternarLeido(item)}
+              icono={sinLeer ? 'mark-email-read' : 'mark-email-unread'}
+              texto={sinLeer ? 'Leido' : 'No leido'}
+            >
             <Pressable
               style={[s.conv, sombra, { borderLeftWidth: 4, borderLeftColor: est.color }]}
               onPress={() => navigation.navigate('CrmChat', { id: item.id, nombre })}
@@ -194,17 +237,74 @@ export default function CrmScreen({ navigation }) {
                 </View>
               </View>
             </Pressable>
+            </FilaDeslizable>
           );
         }}
       />
+
+      <Modal visible={verVendedores} animationType="slide" transparent
+        onRequestClose={() => setVerVendedores(false)}>
+        <Pressable style={s.fondo} onPress={() => setVerVendedores(false)} />
+        <View style={s.hoja}>
+          <View style={s.hojaTop}>
+            <Text style={s.hojaTit}>Ver conversaciones de</Text>
+            <Pressable onPress={() => setVerVendedores(false)} hitSlop={10}>
+              <MaterialIcons name="close" size={22} color={C.ink3} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>
+            <Pressable
+              style={[s.opcion, !vendedorId && { backgroundColor: C.tealSoft }]}
+              onPress={() => { setVendedorId(null); setVerVendedores(false); }}
+            >
+              <MaterialIcons name="groups" size={19} color={C.tealDeep} />
+              <Text style={s.opcionT}>Todo el equipo</Text>
+              {!vendedorId ? <MaterialIcons name="check" size={19} color={C.teal} /> : null}
+            </Pressable>
+            {vendedores.map((v) => {
+              const nom = `${v.nombre || ''} ${v.apellido || ''}`.trim();
+              return (
+                <Pressable
+                  key={v.id}
+                  style={[s.opcion, vendedorId === v.id && { backgroundColor: C.tealSoft }]}
+                  onPress={() => { setVendedorId(v.id); setVerVendedores(false); }}
+                >
+                  <MaterialIcons name="person" size={19} color={C.ink3} />
+                  <Text style={s.opcionT}>{nom}</Text>
+                  {vendedorId === v.id ? <MaterialIcons name="check" size={19} color={C.teal} /> : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const s = StyleSheet.create({
+  filtroVend: {
+    flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start',
+    backgroundColor: C.tealSoft, borderRadius: 18, paddingHorizontal: 13,
+    paddingVertical: 8, marginTop: 14, marginHorizontal: 14, maxWidth: '92%',
+  },
+  filtroVendTxt: { fontSize: 13, fontWeight: '700', color: C.tealDeep, flexShrink: 1 },
+  fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.4)' },
+  hoja: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%' },
+  hojaTop: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: C.lineSoft,
+  },
+  hojaTit: { flex: 1, fontSize: 16, fontWeight: '700', color: C.ink },
+  opcion: {
+    flexDirection: 'row', alignItems: 'center', gap: 11,
+    paddingHorizontal: 16, paddingVertical: 13,
+    borderBottomWidth: 1, borderBottomColor: C.lineSoft,
+  },
+  opcionT: { flex: 1, fontSize: 14.5, fontWeight: '500', color: C.ink },
   buscador: {
     flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff',
-    margin: 14, marginBottom: 10, paddingHorizontal: 13, height: 46,
+    margin: 14, marginTop: 10, marginBottom: 10, paddingHorizontal: 13, height: 46,
     borderRadius: R.md, borderWidth: 1, borderColor: C.line,
   },
   input: { flex: 1, fontSize: 14.5, color: C.ink },
