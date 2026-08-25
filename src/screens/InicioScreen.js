@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { muro, perfil as perfilApi, imagenUrl, notificaciones } from '../api/client';
 import { ponerBadge } from '../push';
 import VisorImagen from '../VisorImagen';
+import MenuContextual, { usarPosicionToque } from '../MenuContextual';
 import { useAuth } from '../context/AuthContext';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
 import { C, R, sombra, iniciales } from '../theme';
@@ -39,6 +40,7 @@ export default function InicioScreen({ navigation }) {
   const vistos = useRef(new Set());
   const [sinLeer, setSinLeer] = useState(0);
   const [viendo, setViendo] = useState(null);
+  const ctx = usarPosicionToque();
 
   // La campanita con el contador: sin eso, las notificaciones existen pero
   // no hay forma de volver a verlas desde la app.
@@ -159,13 +161,26 @@ export default function InicioScreen({ navigation }) {
   const menu = (post) => {
     const opciones = [];
     if (puede('muro.fijar')) {
-      opciones.push({ text: post.fijado ? 'Desfijar del muro' : 'Fijar arriba', onPress: () => fijar(post) });
+      opciones.push({
+        texto: post.fijado ? 'Desfijar del muro' : 'Fijar arriba',
+        icono: post.fijado ? 'push-pin' : 'push-pin',
+        onPress: () => fijar(post),
+      });
     }
     if (post.autor.soy_yo || puede('muro.moderar')) {
-      opciones.push({ text: 'Eliminar', style: 'destructive', onPress: () => eliminar(post) });
+      opciones.push({
+        texto: 'Eliminar publicacion',
+        icono: 'delete-outline',
+        destructivo: true,
+        onPress: () => eliminar(post),
+      });
     }
     if (!opciones.length) return;
-    Alert.alert('Publicacion', null, [...opciones, { text: 'Cancelar', style: 'cancel' }]);
+    ctx.abrir({
+      titulo: post.autor.nombre,
+      subtitulo: post.titulo || null,
+      opciones,
+    });
   };
 
   // Solo mostramos los tres puntitos si hay algo que hacer con ese post.
@@ -212,8 +227,19 @@ export default function InicioScreen({ navigation }) {
             onAbrir={() => navigation.navigate('Post', { id: item.id })}
             onAmpliar={(m) => setViendo({ uri: m.url, nombre: null })}
             onMenu={tieneMenu(item) ? () => menu(item) : null}
+            alTocarMenu={ctx.alTocar}
           />
         )}
+      />
+
+      <MenuContextual
+        visible={!!ctx.menu}
+        x={ctx.menu && ctx.menu.x}
+        y={ctx.menu && ctx.menu.y}
+        titulo={ctx.menu && ctx.menu.titulo}
+        subtitulo={ctx.menu && ctx.menu.subtitulo}
+        opciones={ctx.menu && ctx.menu.opciones}
+        onCerrar={ctx.cerrar}
       />
 
       <VisorImagen
@@ -264,7 +290,7 @@ function Cumples({ items, onVerTodos }) {
   );
 }
 
-function Post({ post, onReaccion, onAbrir, onMenu, onAmpliar }) {
+function Post({ post, onReaccion, onAbrir, onMenu, onAmpliar, alTocarMenu }) {
   const [abanico, setAbanico] = useState(false);
   const a = post.autor || {};
   const partes = String(a.nombre || '').split(' ');
@@ -288,7 +314,7 @@ function Post({ post, onReaccion, onAbrir, onMenu, onAmpliar }) {
         ) : null}
         {post.fijado ? <MaterialIcons name="push-pin" size={17} color={C.ink3} /> : null}
         {onMenu ? (
-          <Pressable onPress={onMenu} hitSlop={12} style={{ paddingLeft: 4 }}>
+          <Pressable onPress={onMenu} onPressIn={alTocarMenu} hitSlop={12} style={{ paddingLeft: 4 }}>
             <MaterialIcons name="more-horiz" size={21} color={C.ink3} />
           </Pressable>
         ) : null}

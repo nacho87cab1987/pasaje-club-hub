@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { gestion } from '../api/client';
+import { vibrar } from '../MenuContextual';
 import { Cargando, ErrorBox, Vacio } from '../components/UI';
 import { C, R, sombra } from '../theme';
 
@@ -70,6 +71,8 @@ export default function GestionScreen({ navigation }) {
   useEffect(() => { cargar(); }, [cargar]);
 
   const completar = async (tarea) => {
+    // Un golpecito al tildar: confirma el toque antes de que responda la red.
+    vibrar();
     // Optimista: sale de la lista al instante. La tarea se marca tambien en
     // gestion, no es una copia.
     const antes = data;

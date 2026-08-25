@@ -8,6 +8,7 @@ import { crmApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
 import { filtros, estadoDe, cargarEstados, hayCatalogo } from '../estados';
+import MenuContextual, { usarPosicionToque } from '../MenuContextual';
 import { C, R, sombra, iniciales } from '../theme';
 
 
@@ -47,6 +48,7 @@ export default function CrmScreen({ navigation }) {
   const [vendedorId, setVendedorId] = useState(null);
   const [verVendedores, setVerVendedores] = useState(false);
   const esAdmin = !!(boot && boot.credencial === 'admin');
+  const ctx = usarPosicionToque();
   const [avisoCatalogo, setAvisoCatalogo] = useState(null);
 
   // El catalogo de estados lo define el servidor: nombres, colores y orden.
@@ -112,17 +114,22 @@ export default function CrmScreen({ navigation }) {
   };
 
   const menuConversacion = (conv, nombre, sinLeer) => {
-    Alert.alert(nombre, conv.destino || conv.codigo || null, [
-      {
-        text: sinLeer ? 'Marcar como leida' : 'Marcar como no leida',
-        onPress: () => alternarLeido(conv),
-      },
-      {
-        text: 'Abrir',
-        onPress: () => navigation.navigate('CrmChat', { id: conv.id, nombre }),
-      },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
+    ctx.abrir({
+      titulo: nombre,
+      subtitulo: [conv.codigo, conv.destino].filter(Boolean).join(' · ') || null,
+      opciones: [
+        {
+          texto: sinLeer ? 'Marcar como leida' : 'Marcar como no leida',
+          icono: sinLeer ? 'mark-email-read' : 'mark-email-unread',
+          onPress: () => alternarLeido(conv),
+        },
+        {
+          texto: 'Abrir conversacion',
+          icono: 'open-in-new',
+          onPress: () => navigation.navigate('CrmChat', { id: conv.id, nombre }),
+        },
+      ],
+    });
   };
 
   const vendedorActual = vendedores.find((v) => v.id === vendedorId);
@@ -213,8 +220,9 @@ export default function CrmScreen({ navigation }) {
             <Pressable
               style={[s.conv, sombra, { borderLeftWidth: 4, borderLeftColor: est.color }]}
               onPress={() => navigation.navigate('CrmChat', { id: item.id, nombre })}
+              onPressIn={ctx.alTocar}
               onLongPress={() => menuConversacion(item, nombre, sinLeer)}
-              delayLongPress={350}
+              delayLongPress={330}
             >
               <View>
                 <Avatar
@@ -257,6 +265,16 @@ export default function CrmScreen({ navigation }) {
             </Pressable>
           );
         }}
+      />
+
+      <MenuContextual
+        visible={!!ctx.menu}
+        x={ctx.menu && ctx.menu.x}
+        y={ctx.menu && ctx.menu.y}
+        titulo={ctx.menu && ctx.menu.titulo}
+        subtitulo={ctx.menu && ctx.menu.subtitulo}
+        opciones={ctx.menu && ctx.menu.opciones}
+        onCerrar={ctx.cerrar}
       />
 
       <Modal visible={verVendedores} animationType="slide" transparent

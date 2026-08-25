@@ -1,0 +1,160 @@
+import React, { useRef, useState } from 'react';
+import {
+  View, Text, Modal, Pressable, StyleSheet, Dimensions, Animated,
+  Vibration, Platform,
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { C, R } from './theme';
+
+// expo-haptics da el golpecito seco de iOS. Si no esta en la build, se cae a
+// Vibration, que es parte del nucleo de React Native y siempre existe: la
+// diferencia se siente, pero nunca queda sin respuesta al dedo.
+let Haptics = null;
+try { Haptics = require('expo-haptics'); } catch (e) { Haptics = null; }
+
+export function vibrar(fuerte = false) {
+  try {
+    if (Haptics && Haptics.impactAsync) {
+      Haptics.impactAsync(
+        fuerte ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light,
+      );
+      return;
+    }
+  } catch (e) { /* sigue al respaldo */ }
+  // En iOS, Vibration.vibrate() ignora la duracion y siempre da el mismo
+  // golpe; en Android si la respeta.
+  Vibration.vibrate(Platform.OS === 'android' ? (fuerte ? 22 : 12) : 12);
+}
+
+const ANCHO_MENU = 232;
+
+/**
+ * Menu que aparece donde esta el dedo, como el de iOS.
+ *
+ * Se posiciona con las coordenadas del toque y se acomoda solo si quedaria
+ * fuera de la pantalla: cerca del borde inferior sube, cerca del derecho se
+ * corre a la izquierda.
+ */
+export default function MenuContextual({ visible, x, y, titulo, subtitulo, opciones, onCerrar }) {
+  const { width, height } = Dimensions.get('window');
+  const escala = useRef(new Animated.Value(0.88)).current;
+  const opacidad = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (visible) {
+      escala.setValue(0.88);
+      opacidad.setValue(0);
+      Animated.parallel([
+        Animated.spring(escala, { toValue: 1, useNativeDriver: true, friction: 7, tension: 90 }),
+        Animated.timing(opacidad, { toValue: 1, duration: 110, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  const alto = 54 + (opciones || []).length * 50 + (titulo ? 44 : 0);
+
+  // Debajo del dedo, salvo que no entre: ahi va arriba.
+  const arriba = y + alto + 30 > height;
+  const top = arriba ? Math.max(60, y - alto - 14) : y + 14;
+  const left = Math.min(Math.max(14, x - ANCHO_MENU / 2), width - ANCHO_MENU - 14);
+
+  const elegir = (o) => {
+    onCerrar();
+    // Se cierra primero: si la accion abre otra pantalla, el menu no queda
+    // colgado encima.
+    setTimeout(() => o.onPress && o.onPress(), 60);
+  };
+
+  return (
+    <Modal visible transparent animationType="none" onRequestClose={onCerrar}>
+      <Pressable style={s.fondo} onPress={onCerrar}>
+        <Animated.View style={{ opacity: opacidad, flex: 1 }} pointerEvents="box-none">
+          <Animated.View
+            style={[
+              s.menu,
+              { top, left, width: ANCHO_MENU },
+              { transform: [{ scale: escala }] },
+            ]}
+          >
+            {titulo ? (
+              <View style={s.cab}>
+                <Text style={s.cabT} numberOfLines={1}>{titulo}</Text>
+                {subtitulo ? (
+                  <Text style={s.cabS} numberOfLines={1}>{subtitulo}</Text>
+                ) : null}
+              </View>
+            ) : null}
+
+            {(opciones || []).map((o, i) => (
+              <Pressable
+                key={o.texto}
+                style={({ pressed }) => [
+                  s.opcion,
+                  i < opciones.length - 1 && s.borde,
+                  pressed && { backgroundColor: C.lineSoft },
+                ]}
+                onPress={() => elegir(o)}
+              >
+                <Text style={[s.opcionT, o.destructivo && { color: C.bordo }]}>
+                  {o.texto}
+                </Text>
+                {o.icono ? (
+                  <MaterialIcons
+                    name={o.icono}
+                    size={19}
+                    color={o.destructivo ? C.bordo : C.ink2}
+                  />
+                ) : null}
+              </Pressable>
+            ))}
+          </Animated.View>
+        </Animated.View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/**
+ * Guarda donde toco el dedo. onLongPress no trae las coordenadas, asi que
+ * hay que tomarlas en onPressIn, que si las tiene.
+ */
+export function usarPosicionToque() {
+  const pos = useRef({ x: 0, y: 0 });
+  const [menu, setMenu] = useState(null);
+
+  const alTocar = (e) => {
+    const n = e && e.nativeEvent;
+    if (n) pos.current = { x: n.pageX, y: n.pageY };
+  };
+
+  const abrir = (datos) => {
+    vibrar();
+    setMenu({ ...datos, x: pos.current.x, y: pos.current.y });
+  };
+
+  return { alTocar, abrir, menu, cerrar: () => setMenu(null) };
+}
+
+const s = StyleSheet.create({
+  fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.28)' },
+  menu: {
+    position: 'absolute', backgroundColor: '#fff', borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#072D40', shadowOpacity: 0.22, shadowRadius: 22,
+    shadowOffset: { width: 0, height: 8 }, elevation: 12,
+  },
+  cab: {
+    paddingHorizontal: 15, paddingTop: 12, paddingBottom: 10,
+    borderBottomWidth: 1, borderBottomColor: C.line, backgroundColor: C.bg,
+  },
+  cabT: { fontSize: 13.5, fontWeight: '700', color: C.ink },
+  cabS: { fontSize: 11.5, color: C.ink3, marginTop: 2 },
+  opcion: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 15, height: 50,
+  },
+  borde: { borderBottomWidth: 1, borderBottomColor: C.lineSoft },
+  opcionT: { fontSize: 15, color: C.ink },
+});
