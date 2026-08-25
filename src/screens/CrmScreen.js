@@ -8,7 +8,6 @@ import { crmApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
 import { filtros, estadoDe, cargarEstados, hayCatalogo } from '../estados';
-import FilaDeslizable from '../FilaDeslizable';
 import { C, R, sombra, iniciales } from '../theme';
 
 
@@ -47,6 +46,7 @@ export default function CrmScreen({ navigation }) {
   const [vendedores, setVendedores] = useState([]);
   const [vendedorId, setVendedorId] = useState(null);
   const [verVendedores, setVerVendedores] = useState(false);
+  const esAdmin = !!(boot && boot.credencial === 'admin');
   const [avisoCatalogo, setAvisoCatalogo] = useState(null);
 
   // El catalogo de estados lo define el servidor: nombres, colores y orden.
@@ -71,8 +71,15 @@ export default function CrmScreen({ navigation }) {
         ...(busqueda ? { q: busqueda } : {}),
       });
       setItems(r.items || []);
-      // El servidor solo manda la lista si la persona supervisa a alguien.
-      if (r.vendedores_filtrables) setVendedores(r.vendedores_filtrables);
+      // Un supervisor recibe su equipo dentro de la respuesta. El admin no:
+      // para el se pide la lista completa por separado, una sola vez.
+      if (r.vendedores_filtrables && r.vendedores_filtrables.length) {
+        setVendedores(r.vendedores_filtrables);
+      } else if (esAdmin && !vendedores.length) {
+        crm.vendedores()
+          .then((v) => setVendedores(v.items || []))
+          .catch(() => {});
+      }
       setContadores(r.contadores || {});
     } catch (e) {
       setError(e.message);
@@ -104,6 +111,20 @@ export default function CrmScreen({ navigation }) {
     }
   };
 
+  const menuConversacion = (conv, nombre, sinLeer) => {
+    Alert.alert(nombre, conv.destino || conv.codigo || null, [
+      {
+        text: sinLeer ? 'Marcar como leida' : 'Marcar como no leida',
+        onPress: () => alternarLeido(conv),
+      },
+      {
+        text: 'Abrir',
+        onPress: () => navigation.navigate('CrmChat', { id: conv.id, nombre }),
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
+
   const vendedorActual = vendedores.find((v) => v.id === vendedorId);
 
   if (items === null || !listo) return <Cargando texto="Cargando conversaciones" />;
@@ -111,7 +132,7 @@ export default function CrmScreen({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      {vendedores.length > 1 ? (
+      {vendedores.length > 1 || esAdmin ? (
         <Pressable style={s.filtroVend} onPress={() => setVerVendedores(true)}>
           <MaterialIcons name={vendedorActual ? 'person' : 'groups'} size={17} color={C.tealDeep} />
           <Text style={s.filtroVendTxt} numberOfLines={1}>
@@ -189,14 +210,11 @@ export default function CrmScreen({ navigation }) {
           const canal = String(item.canal || 'manual').toLowerCase();
           const est = estadoDe(item.estado);
           return (
-            <FilaDeslizable
-              onAccion={() => alternarLeido(item)}
-              icono={sinLeer ? 'mark-email-read' : 'mark-email-unread'}
-              texto={sinLeer ? 'Leido' : 'No leido'}
-            >
             <Pressable
               style={[s.conv, sombra, { borderLeftWidth: 4, borderLeftColor: est.color }]}
               onPress={() => navigation.navigate('CrmChat', { id: item.id, nombre })}
+              onLongPress={() => menuConversacion(item, nombre, sinLeer)}
+              delayLongPress={350}
             >
               <View>
                 <Avatar
@@ -237,7 +255,6 @@ export default function CrmScreen({ navigation }) {
                 </View>
               </View>
             </Pressable>
-            </FilaDeslizable>
           );
         }}
       />

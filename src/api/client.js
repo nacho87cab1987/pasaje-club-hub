@@ -168,6 +168,9 @@ export function crmApi(credencial) {
       api.post('crm_conversaciones.php', 'nota', { id, contenido, adjunto_ids }),
     leida:     (id)            => llamar('marcar_leida', 'POST', { id }),
     noLeida:   (id)            => llamar('marcar_no_leida', 'POST', { id }),
+    // Para el admin: la lista completa de vendedoras. Un supervisor la
+    // recibe dentro de la respuesta de list, pero el admin no.
+    vendedores: ()             => api.get('crm_conversaciones.php', 'vendedores_admin'),
     estado:    (id, estado, prioridad) => llamar('cambiar_estado', 'POST', { id, estado, prioridad }),
 
     // Estas dos son iguales para todos: no tienen variante _admin.
