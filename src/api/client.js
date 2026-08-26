@@ -250,6 +250,17 @@ export const pasajito = {
     api.post('pasajito.php', 'enviar', { chat_id, mensaje }, null, { timeout: 90000 }),
 };
 
+export const desempeno = {
+  ciclos:     ()        => api.get('hub_desempeno.php', 'ciclos'),
+  mia:        (params)  => api.get('hub_desempeno.php', 'mia', params),
+  equipo:     (params)  => api.get('hub_desempeno.php', 'equipo', params),
+  evaluacion: (persona_id, params) =>
+    api.get('hub_desempeno.php', 'evaluacion', { persona_id, ...(params || {}) }),
+  ficha:      (persona_id) => api.get('hub_desempeno.php', 'ficha', { persona_id }),
+  guardar:    (datos)   => api.post('hub_desempeno.php', 'guardar', datos),
+  enviar:     (evaluacion_id) => api.post('hub_desempeno.php', 'enviar', { evaluacion_id }),
+};
+
 export const ventas = {
   resumen:   (params) => api.get('hub_ventas.php', 'resumen', params),
   evolucion: (params) => api.get('hub_ventas.php', 'evolucion', params),
