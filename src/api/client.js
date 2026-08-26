@@ -263,6 +263,15 @@ export const eventos = {
     api.post('hub_eventos.php', 'asistencia', { evento_id, asistencias }),
 };
 
+export const reconocimientos = {
+  muro:    ()      => api.get('hub_reconocimientos.php', 'muro'),
+  mios:    ()      => api.get('hub_reconocimientos.php', 'mios'),
+  persona: (persona_id) => api.get('hub_reconocimientos.php', 'persona', { persona_id }),
+  valores: ()      => api.get('hub_reconocimientos.php', 'valores'),
+  resumen: ()      => api.get('hub_reconocimientos.php', 'resumen'),
+  crear:   (datos) => api.post('hub_reconocimientos.php', 'crear', datos),
+};
+
 export const desempeno = {
   ciclos:     ()        => api.get('hub_desempeno.php', 'ciclos'),
   mia:        (params)  => api.get('hub_desempeno.php', 'mia', params),
