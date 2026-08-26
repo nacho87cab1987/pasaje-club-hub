@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Card, Boton } from '../components/UI';
 import { perfil as perfilApi, imagenUrl } from '../api/client';
 import { vibrar, estadoVibracion } from '../MenuContextual';
+import { estadoArchivos } from '../archivos';
 import { C, R, sombra, iniciales } from '../theme';
 
 export default function PerfilScreen({ navigation }) {
@@ -97,14 +98,20 @@ export default function PerfilScreen({ navigation }) {
         onPress={() => {
           vibrar(true);
           const e = estadoVibracion();
+          const a = estadoArchivos();
           Alert.alert(
-            'Prueba de vibracion',
-            `Metodo: ${e.ultimo}\nModulo: ${e.haptics}\n\nSi no sentiste nada, fijate en Ajustes del telefono > Sonidos y vibracion.`,
+            'Diagnostico',
+            `VIBRACION\nMetodo: ${e.ultimo}\nModulo: ${e.haptics}\n\n`
+            + `ARCHIVOS\nDescarga: ${a.descarga ? 'si' : 'no'}\n`
+            + `Compartir: ${a.compartir ? 'si' : 'no'}\n`
+            + `Navegador propio: ${a.navegador ? 'si' : 'no'}\n\n`
+            + 'Si "Compartir" dice no, los archivos se abren en el navegador '
+            + 'y hace falta recompilar la app.',
           );
         }}
       >
         <MaterialIcons name="vibration" size={17} color={C.ink3} />
-        <Text style={s.probarVibraTxt}>Probar vibracion</Text>
+        <Text style={s.probarVibraTxt}>Diagnostico del telefono</Text>
       </Pressable>
 
       <Text style={s.version}>Pasaje Club · version 1.0.0</Text>

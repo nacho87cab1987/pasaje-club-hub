@@ -51,17 +51,14 @@ export default function CarpetaScreen({ route, navigation }) {
   }, [q, cargar]);
 
   const abrir = async (doc) => {
-    // El visor del sistema abre la URL por su cuenta, sin los headers de la
-    // app: por eso el token va en la URL y no en un header.
+    // El token va en la URL y no en un header porque quien descarga el
+    // archivo es el sistema, no la app.
     const url = urlDocumento(doc.id);
-    try {
-      const puede = await Linking.canOpenURL(url);
-      if (!puede) throw new Error('sin visor');
-      await Linking.openURL(url);
+    const nombre = `${doc.titulo || 'documento'}.${doc.extension || 'pdf'}`;
+    const r = await abrirArchivo(url, nombre);
+    if (r !== 'error') {
       // Al abrirlo queda marcado como leido del lado del servidor.
       setItems((xs) => xs.map((x) => (x.id === doc.id ? { ...x, leido: true } : x)));
-    } catch (e) {
-      Alert.alert('No se pudo abrir', 'Probá de nuevo o avisale a administracion.');
     }
   };
 

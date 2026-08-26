@@ -21,8 +21,7 @@ export default function CertificadosScreen() {
       Alert.alert('Sin PDF', 'Este certificado todavia no tiene archivo. Entra a la Academia desde el navegador.');
       return;
     }
-    try { await Linking.openURL(c.pdf_url); }
-    catch { Alert.alert('No se pudo abrir'); }
+    await abrirArchivo(c.pdf_url, `Certificado ${c.curso || ''}.pdf`);
   };
 
   if (error) return <ErrorBox mensaje={error} onReintentar={cargar} />;

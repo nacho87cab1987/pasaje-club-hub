@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, Image, Pressable, StyleSheet, Linking, Alert } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { C, R } from './theme';
+import { abrirArchivo } from './archivos';
 
 // Cada formato con su icono y su color. Reconocer un PDF de un Excel de un
 // vistazo es la mitad de lo que uno necesita de una lista de adjuntos.
@@ -43,18 +44,10 @@ export default function AdjuntoArchivo({ adjunto, url, claro, compacto }) {
   const peso = pesoLegible(adjunto.tamanio_bytes);
   const nombre = adjunto.nombre_original || `Archivo.${ext}`;
 
-  const abrir = async () => {
-    try {
-      const puede = await Linking.canOpenURL(url);
-      if (!puede) throw new Error('sin visor');
-      await Linking.openURL(url);
-    } catch (e) {
-      Alert.alert(
-        'No se pudo abrir',
-        'Proba de nuevo, o abrilo desde el navegador.',
-      );
-    }
-  };
+  // Baja el archivo y abre el menu del sistema: abrir la URL directo hacia
+  // que iOS se la pasara a la app del panel de socios, por los links
+  // universales del dominio.
+  const abrir = () => abrirArchivo(url, nombre);
 
   if (compacto) {
     return (
