@@ -8,6 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { crmApi, imagenUrl, etiquetasApi } from '../api/client';
 import { elegirImagenes } from '../imagenes';
 import VisorImagen from '../VisorImagen';
+import AdjuntoArchivo, { AdjuntoImagen, pesoLegible } from '../AdjuntoArchivo';
 import { useAuth } from '../context/AuthContext';
 import { Cargando, ErrorBox, Tag } from '../components/UI';
 import { ordenEstados, estadoDe, cargarEstados, hayCatalogo } from '../estados';
@@ -318,55 +319,23 @@ export default function CrmChatScreen({ route, navigation }) {
           return (
             <View style={[s.burbujaWrap, mio ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
               <View style={[s.burbuja, mio ? s.mia : s.suya]}>
-                {(item.adjuntos || []).map((a) => (
-                  a.tipo === 'imagen' ? (
-                    <Pressable
-                      key={a.id}
-                      onPress={() => setViendo({
-                        uri: imagenUrl(a.archivo_path),
-                        nombre: a.nombre_original,
-                      })}
-                    >
-                      <Image source={{ uri: imagenUrl(a.archivo_path) }} style={s.adjImg} />
-                      <View style={s.lupa}>
-                        <MaterialIcons name="zoom-out-map" size={15} color="#fff" />
-                      </View>
-                    </Pressable>
-                  ) : a.tipo === 'audio' ? (
-                    <Reproductor key={a.id} uri={imagenUrl(a.archivo_path)} claro={mio} />
-                  ) : (
-                    // Los documentos se abren con el visor del sistema: la
-                    // app no tiene por que saber leer un PDF o un Excel.
-                    <Pressable
-                      key={a.id}
-                      style={s.adjDoc}
-                      onPress={async () => {
-                        const url = imagenUrl(a.archivo_path);
-                        try { await Linking.openURL(url); }
-                        catch { Alert.alert('No se pudo abrir', 'Proba desde el navegador.'); }
-                      }}
-                    >
-                      <MaterialIcons name="description" size={19} color={mio ? '#fff' : C.tealDeep} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={[s.adjDocTxt, mio && { color: '#fff' }]} numberOfLines={1}>
-                          {a.nombre_original || 'Archivo'}
-                        </Text>
-                        {a.tamanio_bytes ? (
-                          <Text style={[s.adjDocPeso, mio && { color: 'rgba(255,255,255,0.7)' }]}>
-                            {a.tamanio_bytes > 1048576
-                              ? `${(a.tamanio_bytes / 1048576).toFixed(1)} MB`
-                              : `${Math.round(a.tamanio_bytes / 1024)} KB`}
-                          </Text>
-                        ) : null}
-                      </View>
-                      <MaterialIcons
-                        name="download"
-                        size={17}
-                        color={mio ? 'rgba(255,255,255,0.8)' : C.ink3}
+                {(item.adjuntos || []).map((a) => {
+                  const url = imagenUrl(a.archivo_path);
+                  if (a.tipo === 'imagen') {
+                    return (
+                      <AdjuntoImagen
+                        key={a.id}
+                        adjunto={a}
+                        url={url}
+                        onAbrir={() => setViendo({ uri: url, nombre: a.nombre_original })}
                       />
-                    </Pressable>
-                  )
-                ))}
+                    );
+                  }
+                  if (a.tipo === 'audio') {
+                    return <Reproductor key={a.id} uri={url} claro={mio} />;
+                  }
+                  return <AdjuntoArchivo key={a.id} adjunto={a} url={url} claro={mio} />;
+                })}
                 {item.contenido && !esPlaceholder(item.contenido) ? (
                   <Text style={[s.msg, mio && { color: '#fff' }]}>{item.contenido}</Text>
                 ) : null}
@@ -401,18 +370,24 @@ export default function CrmChatScreen({ route, navigation }) {
         <ScrollView horizontal style={s.adjBarra} showsHorizontalScrollIndicator={false}>
           {adjuntos.map((a, i) => (
             <View key={a.adjunto_id} style={s.adjMini}>
-              {a.tipo === 'imagen'
-                ? (
-                  <Pressable onPress={() => setViendo({ uri: a.url, nombre: a.nombre })}>
-                    <Image source={{ uri: a.url }} style={s.adjMiniImg} />
-                  </Pressable>
-                )
-                : (
-                  <View style={[s.adjMiniImg, s.adjMiniDoc]}>
-                    <MaterialIcons name={a.tipo === 'audio' ? 'mic' : 'description'} size={22} color={C.tealDeep} />
-                    {a.duracion ? <Text style={s.adjDur}>{segundos(a.duracion)}</Text> : null}
-                  </View>
-                )}
+              {a.tipo === 'imagen' ? (
+                <Pressable onPress={() => setViendo({ uri: a.url, nombre: a.nombre })}>
+                  <Image source={{ uri: a.url }} style={s.adjMiniImg} />
+                </Pressable>
+              ) : (
+                <View style={[s.adjMiniImg, s.adjMiniDoc]}>
+                  <MaterialIcons
+                    name={a.tipo === 'audio' ? 'mic' : 'description'}
+                    size={22}
+                    color={C.tealDeep}
+                  />
+                  {/* Que se lea el nombre antes de mandarlo: adjuntar el
+                      archivo equivocado se descubre recien del otro lado. */}
+                  <Text style={s.adjMiniTxt} numberOfLines={1}>
+                    {a.duracion ? segundos(a.duracion) : (a.nombre || 'Archivo')}
+                  </Text>
+                </View>
+              )}
               <Pressable style={s.adjQuitar} onPress={() => setAdjuntos(adjuntos.filter((_, j) => j !== i))}>
                 <MaterialIcons name="close" size={13} color="#fff" />
               </Pressable>
@@ -684,9 +659,10 @@ const s = StyleSheet.create({
   adjDocTxt: { fontSize: 13, color: C.ink },
   adjDocPeso: { fontSize: 10.5, color: C.ink3, marginTop: 1 },
   adjBarra: { maxHeight: 84, paddingHorizontal: 11, paddingTop: 9, backgroundColor: '#fff' },
-  adjMini: { marginRight: 8, width: 66, height: 66 },
-  adjMiniImg: { width: 66, height: 66, borderRadius: 10, backgroundColor: C.lineSoft },
-  adjMiniDoc: { alignItems: 'center', justifyContent: 'center' },
+  adjMini: { marginRight: 8, width: 72, height: 72 },
+  adjMiniImg: { width: 72, height: 72, borderRadius: 10, backgroundColor: C.lineSoft },
+  adjMiniDoc: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  adjMiniTxt: { fontSize: 9, color: C.tealDeep, marginTop: 3, fontWeight: '600', textAlign: 'center' },
   adjQuitar: {
     position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: 10,
     backgroundColor: 'rgba(7,45,64,0.82)', alignItems: 'center', justifyContent: 'center',
