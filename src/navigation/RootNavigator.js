@@ -53,6 +53,9 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 import VentasScreen from '../screens/VentasScreen';
 import PasajitoScreen from '../screens/PasajitoScreen';
 import DesempenoScreen from '../screens/DesempenoScreen';
+import EventosScreen from '../screens/EventosScreen';
+import EventoScreen from '../screens/EventoScreen';
+import EventoFormScreen from '../screens/EventoFormScreen';
 import DesempenoEquipoScreen from '../screens/DesempenoEquipoScreen';
 import DesempenoEvaluarScreen from '../screens/DesempenoEvaluarScreen';
 import OnboardingGenteScreen from '../screens/OnboardingGenteScreen';
@@ -180,6 +183,9 @@ export default function RootNavigator() {
             <Stack.Screen name="Ventas" component={VentasScreen} options={{ title: 'Ventas' }} />
             <Stack.Screen name="Pasajito" component={PasajitoScreen} options={{ title: 'Pasajito' }} />
             <Stack.Screen name="Desempeno" component={DesempenoScreen} options={{ title: 'Desempeño' }} />
+            <Stack.Screen name="Eventos" component={EventosScreen} options={{ title: 'Eventos' }} />
+            <Stack.Screen name="Evento" component={EventoScreen} options={{ title: '' }} />
+            <Stack.Screen name="EventoForm" component={EventoFormScreen} options={{ title: 'Nuevo evento' }} />
             <Stack.Screen name="DesempenoEquipo" component={DesempenoEquipoScreen} options={{ title: 'Evaluar al equipo' }} />
             <Stack.Screen name="DesempenoEvaluar" component={DesempenoEvaluarScreen} options={{ title: '' }} />
             <Stack.Screen name="OnboardingGente" component={OnboardingGenteScreen} options={{ title: 'Onboarding del equipo' }} />

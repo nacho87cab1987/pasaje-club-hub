@@ -250,6 +250,19 @@ export const pasajito = {
     api.post('pasajito.php', 'enviar', { chat_id, mensaje }, null, { timeout: 90000 }),
 };
 
+export const eventos = {
+  listar:     ()   => api.get('hub_eventos.php', 'listar'),
+  evento:     (id) => api.get('hub_eventos.php', 'evento', { id }),
+  opciones:   ()   => api.get('hub_eventos.php', 'opciones'),
+  anotarse:   (evento_id) => api.post('hub_eventos.php', 'anotarse', { evento_id }),
+  bajarme:    (evento_id) => api.post('hub_eventos.php', 'bajarme', { evento_id }),
+  guardar:    (datos)     => api.post('hub_eventos.php', 'guardar', datos),
+  publicar:   (evento_id) => api.post('hub_eventos.php', 'publicar', { evento_id }),
+  cancelar:   (evento_id, motivo) => api.post('hub_eventos.php', 'cancelar', { evento_id, motivo }),
+  asistencia: (evento_id, asistencias) =>
+    api.post('hub_eventos.php', 'asistencia', { evento_id, asistencias }),
+};
+
 export const desempeno = {
   ciclos:     ()        => api.get('hub_desempeno.php', 'ciclos'),
   mia:        (params)  => api.get('hub_desempeno.php', 'mia', params),

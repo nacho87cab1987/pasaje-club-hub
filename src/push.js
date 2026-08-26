@@ -128,6 +128,7 @@ export function rutaAPantalla(ruta) {
     case 'persona':  return ['Personas', { personaId: id }];
     case 'crm':      return ['CRM', { conversacionId: id }];
     case 'tarea':    return ['Tarea', { id }];
+    case 'evento':   return ['Evento', { id }];
     case 'documento':return ['Documentos', {}];
     case 'modulo':   return ['Apps', { slug: id }];
     default:         return ['Inicio', {}];
