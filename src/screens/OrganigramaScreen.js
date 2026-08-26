@@ -5,6 +5,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { organigrama } from '../api/client';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
+import Diagrama from '../Diagrama';
 import { C, R, sombra, iniciales } from '../theme';
 
 export default function OrganigramaScreen({ navigation }) {
@@ -13,6 +14,9 @@ export default function OrganigramaScreen({ navigation }) {
   const [abiertos, setAbiertos] = useState({});
   const [q, setQ] = useState('');
   const [refrescando, setRefrescando] = useState(false);
+  // Dos vistas: el diagrama para entender la estructura, la lista para
+  // encontrar a alguien. Ninguna reemplaza a la otra.
+  const [vista, setVista] = useState('diagrama');
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -106,8 +110,23 @@ export default function OrganigramaScreen({ navigation }) {
     );
   };
 
+  if (vista === 'diagrama' && !encontrados) {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
+        <Selector vista={vista} setVista={setVista} />
+        <Diagrama personas={data.items} yo={data.yo} onTocar={abrir} />
+        {raices.length > 1 ? (
+          <Text style={s.pieDiagrama}>
+            {raices.length} personas sin jefe asignado. Tocá una para acomodarlo.
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <Selector vista={vista} setVista={setVista} />
       <View style={s.buscador}>
         <MaterialIcons name="search" size={20} color={C.ink3} />
         <TextInput
@@ -148,7 +167,40 @@ export default function OrganigramaScreen({ navigation }) {
   );
 }
 
+function Selector({ vista, setVista }) {
+  return (
+    <View style={s.selector}>
+      {[
+        { k: 'diagrama', n: 'Diagrama', i: 'account-tree' },
+        { k: 'lista', n: 'Lista', i: 'format-list-bulleted' },
+      ].map((o) => (
+        <Pressable key={o.k} onPress={() => setVista(o.k)}
+          style={[s.selOpt, vista === o.k && s.selOptOn]}>
+          <MaterialIcons name={o.i} size={16} color={vista === o.k ? C.navy : C.ink3} />
+          <Text style={[s.selTxt, vista === o.k && { color: C.navy, fontWeight: '700' }]}>
+            {o.n}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
+  selector: {
+    flexDirection: 'row', gap: 4, backgroundColor: '#fff', margin: 14,
+    marginBottom: 6, padding: 4, borderRadius: 12, borderWidth: 1, borderColor: C.line,
+  },
+  selOpt: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 8, borderRadius: 9,
+  },
+  selOptOn: { backgroundColor: C.tealSoft },
+  selTxt: { fontSize: 12.5, fontWeight: '600', color: C.ink2 },
+  pieDiagrama: {
+    fontSize: 12, color: C.ink3, textAlign: 'center',
+    paddingHorizontal: 20, paddingBottom: 14, lineHeight: 17,
+  },
   buscador: {
     flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff',
     margin: 14, marginBottom: 8, paddingHorizontal: 13, height: 44,
