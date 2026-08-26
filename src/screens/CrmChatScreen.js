@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, StyleSheet, Pressable, Alert,
   KeyboardAvoidingView, Platform, ActivityIndicator, Modal, ScrollView, Image,
+  Linking,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { crmApi, imagenUrl, etiquetasApi } from '../api/client';
@@ -334,12 +335,36 @@ export default function CrmChatScreen({ route, navigation }) {
                   ) : a.tipo === 'audio' ? (
                     <Reproductor key={a.id} uri={imagenUrl(a.archivo_path)} claro={mio} />
                   ) : (
-                    <View key={a.id} style={s.adjDoc}>
+                    // Los documentos se abren con el visor del sistema: la
+                    // app no tiene por que saber leer un PDF o un Excel.
+                    <Pressable
+                      key={a.id}
+                      style={s.adjDoc}
+                      onPress={async () => {
+                        const url = imagenUrl(a.archivo_path);
+                        try { await Linking.openURL(url); }
+                        catch { Alert.alert('No se pudo abrir', 'Proba desde el navegador.'); }
+                      }}
+                    >
                       <MaterialIcons name="description" size={19} color={mio ? '#fff' : C.tealDeep} />
-                      <Text style={[s.adjDocTxt, mio && { color: '#fff' }]} numberOfLines={1}>
-                        {a.nombre_original || 'Archivo'}
-                      </Text>
-                    </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.adjDocTxt, mio && { color: '#fff' }]} numberOfLines={1}>
+                          {a.nombre_original || 'Archivo'}
+                        </Text>
+                        {a.tamanio_bytes ? (
+                          <Text style={[s.adjDocPeso, mio && { color: 'rgba(255,255,255,0.7)' }]}>
+                            {a.tamanio_bytes > 1048576
+                              ? `${(a.tamanio_bytes / 1048576).toFixed(1)} MB`
+                              : `${Math.round(a.tamanio_bytes / 1024)} KB`}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <MaterialIcons
+                        name="download"
+                        size={17}
+                        color={mio ? 'rgba(255,255,255,0.8)' : C.ink3}
+                      />
+                    </Pressable>
                   )
                 ))}
                 {item.contenido && !esPlaceholder(item.contenido) ? (
@@ -656,7 +681,8 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(7,45,64,0.55)', alignItems: 'center', justifyContent: 'center',
   },
   adjDoc: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 },
-  adjDocTxt: { fontSize: 13, color: C.ink, flex: 1 },
+  adjDocTxt: { fontSize: 13, color: C.ink },
+  adjDocPeso: { fontSize: 10.5, color: C.ink3, marginTop: 1 },
   adjBarra: { maxHeight: 84, paddingHorizontal: 11, paddingTop: 9, backgroundColor: '#fff' },
   adjMini: { marginRight: 8, width: 66, height: 66 },
   adjMiniImg: { width: 66, height: 66, borderRadius: 10, backgroundColor: C.lineSoft },

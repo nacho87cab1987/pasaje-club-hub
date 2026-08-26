@@ -20,6 +20,16 @@ export const API = `${SITIO}/socios/api`;
 export function imagenUrl(ruta) {
   if (!ruta) return null;
   if (/^https?:\/\//i.test(ruta)) return ruta;
+
+  // Las rutas de subidas van por hub_img.php y no directo al sitio: los
+  // archivos viven bajo /socios/uploads/, y la carpeta esta cerrada por
+  // .htaccess. Pedirlas por URL directa devolvia 404 o 403, que es por lo
+  // que no se veian los adjuntos del chat.
+  const limpia = String(ruta).replace(/^\/?(socios\/)?/, '');
+  if (limpia.startsWith('uploads/')) {
+    return `${API}/hub_img.php?f=${encodeURIComponent(limpia)}`;
+  }
+
   return SITIO + (ruta.startsWith('/') ? ruta : `/${ruta}`);
 }
 
