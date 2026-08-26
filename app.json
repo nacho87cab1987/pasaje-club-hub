@@ -55,7 +55,9 @@
         {
           "microphonePermission": "Pasaje Club necesita el microfono para que puedas mandar audios a tus clientes."
         }
-      ]
+      ],
+      "expo-sharing",
+      "expo-web-browser"
     ],
     "icon": "./assets/icon.png",
     "extra": {
