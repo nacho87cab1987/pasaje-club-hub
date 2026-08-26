@@ -5,12 +5,28 @@ import { useAuth } from '../context/AuthContext';
 import { Card, Boton } from '../components/UI';
 import { perfil as perfilApi, imagenUrl } from '../api/client';
 import { vibrar, estadoVibracion } from '../MenuContextual';
-import { estadoArchivos } from '../archivos';
+import { estadoArchivos, abrirArchivo } from '../archivos';
+import { API } from '../api/client';
 import { C, R, sombra, iniciales } from '../theme';
 
 export default function PerfilScreen({ navigation }) {
   const { persona, modulos, boot, cerrar } = useAuth();
   const [mio, setMio] = useState(null);
+
+  const probarArchivo = () => {
+    const url = `${API}/hub_img.php?f=uploads/prueba.pdf`;
+    Alert.alert(
+      'Probar apertura',
+      'Vamos a intentar abrir un archivo. Fijate si se abre el visor o si te lleva a la app de socios.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Probar', onPress: async () => {
+            const r = await abrirArchivo(url, 'prueba.pdf');
+            Alert.alert('Resultado', `Camino usado: ${r}`);
+          } },
+      ],
+    );
+  };
 
   const cargar = useCallback(async () => {
     try { setMio(await perfilApi.mio()); } catch { /* el perfil basico ya se ve */ }
@@ -107,6 +123,12 @@ export default function PerfilScreen({ navigation }) {
             + `Navegador propio: ${a.navegador ? 'si' : 'no'}\n\n`
             + 'Si "Compartir" dice no, los archivos se abren en el navegador '
             + 'y hace falta recompilar la app.',
+            [
+              { text: 'Cerrar', style: 'cancel' },
+              // Sirve para saber cual de los dos dominios NO intercepta la
+              // app de socios: el que abra el PDF es el bueno.
+              { text: 'Probar abrir un archivo', onPress: () => probarArchivo() },
+            ],
           );
         }}
       >

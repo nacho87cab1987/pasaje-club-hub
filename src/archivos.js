@@ -9,7 +9,7 @@
 // quiere: guardarlo en Archivos, mandarlo por WhatsApp, imprimirlo.
 // ============================================================================
 
-import { Alert, Linking, Platform } from 'react-native';
+import { Alert, Linking, Platform, Clipboard, Share } from 'react-native';
 
 let FS = null;
 try {
@@ -24,6 +24,20 @@ try { Sharing = require('expo-sharing'); } catch (e) { Sharing = null; }
 
 let WebBrowser = null;
 try { WebBrowser = require('expo-web-browser'); } catch (e) { WebBrowser = null; }
+
+/**
+ * Los links universales se asocian a UN dominio. La app del panel de socios
+ * esta asociada a uno de los dos, asi que pidiendo el archivo por el otro
+ * iOS no lo intercepta y lo abre el visor.
+ *
+ * Los dos dominios apuntan al mismo servidor: el archivo es el mismo.
+ */
+function dominioAlternativo(url) {
+  const u = String(url);
+  if (u.includes('pasajeclub.com.ar')) return u.replace('pasajeclub.com.ar', 'pasajeclub.com');
+  if (u.includes('pasajeclub.com')) return u.replace('pasajeclub.com', 'pasajeclub.com.ar');
+  return null;
+}
 
 /** Nombre de archivo seguro para el sistema de archivos. */
 function nombreSeguro(nombre, url) {
@@ -75,13 +89,40 @@ export async function abrirArchivo(url, nombre) {
     } catch (e) { /* sigue */ }
   }
 
-  // 3. Ultimo recurso. Puede terminar abriendo la otra app.
+  // 3. El otro dominio. Sin los modulos nativos, esta es la unica forma de
+  //    esquivar que la app de socios se quede con el link.
+  const alterna = dominioAlternativo(url);
+  if (alterna) {
+    try {
+      await Linking.openURL(alterna);
+      return 'dominio_alterno';
+    } catch (e) { /* sigue */ }
+  }
+
+  // 4. Ultimo recurso. Puede terminar abriendo la otra app.
   try {
     await Linking.openURL(url);
     return 'sistema';
   } catch (e) {
     Alert.alert('No se pudo abrir', 'Proba de nuevo en un momento.');
     return 'error';
+  }
+}
+
+
+/**
+ * Cuando abrir no funciona. Deja el link a mano para pegarlo donde sea.
+ */
+export async function compartirLink(url, nombre) {
+  try {
+    await Share.share({ message: `${nombre || 'Archivo'}\n${url}`, url });
+  } catch (e) {
+    try {
+      Clipboard.setString(url);
+      Alert.alert('Link copiado', 'Pegalo en el navegador para abrirlo.');
+    } catch (e2) {
+      Alert.alert('El link', url);
+    }
   }
 }
 

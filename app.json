@@ -57,7 +57,8 @@
         }
       ],
       "expo-sharing",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-asset"
     ],
     "icon": "./assets/icon.png",
     "extra": {

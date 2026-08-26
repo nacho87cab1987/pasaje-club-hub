@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { C, R } from './theme';
-import { abrirArchivo } from './archivos';
+import { abrirArchivo, compartirLink } from './archivos';
 
 // Cada formato con su icono y su color. Reconocer un PDF de un Excel de un
 // vistazo es la mitad de lo que uno necesita de una lista de adjuntos.
@@ -49,9 +49,18 @@ export default function AdjuntoArchivo({ adjunto, url, claro, compacto }) {
   // universales del dominio.
   const abrir = () => abrirArchivo(url, nombre);
 
+  // Si abrir no funciona, mantener apretado deja otras salidas.
+  const opciones = () => {
+    Alert.alert(nombre, null, [
+      { text: 'Abrir', onPress: abrir },
+      { text: 'Compartir el link', onPress: () => compartirLink(url, nombre) },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
+
   if (compacto) {
     return (
-      <Pressable style={[s.compacto, { borderColor: `${t.color}44` }]} onPress={abrir}>
+      <Pressable style={[s.compacto, { borderColor: `${t.color}44` }]} onPress={abrir} onLongPress={opciones}>
         <MaterialIcons name={t.icono} size={20} color={t.color} />
         <Text style={s.compactoTxt} numberOfLines={1}>{nombre}</Text>
       </Pressable>
