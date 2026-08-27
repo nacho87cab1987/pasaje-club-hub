@@ -81,18 +81,15 @@ export default function Diagrama({ personas, yo, onTocar }) {
             {hijosDeDireccion.length ? (
               <>
                 <View style={s.bajada} />
-                {hijosDeDireccion.length > 1 ? (
-                  <View style={s.travesanoWrap}>
-                    <View style={s.travesano} />
-                  </View>
-                ) : null}
                 <View style={s.filaHijos}>
-                  {hijosDeDireccion.map((h) => (
+                  {hijosDeDireccion.map((h, i) => (
                     <View key={h.id} style={s.hijo}>
-                      {hijosDeDireccion.length > 1 ? (
-                        <View style={[s.subida,
-                                      { backgroundColor: colorDirector[h._director] || C.line }]} />
-                      ) : null}
+                      <Conector
+                        primero={i === 0}
+                        ultimo={i === hijosDeDireccion.length - 1}
+                        unico={hijosDeDireccion.length === 1}
+                        color={colorDirector[h._director]}
+                      />
                       <Rama persona={h} porJefe={porJefe} yo={yo} onTocar={onTocar} />
                     </View>
                   ))}
@@ -130,11 +127,15 @@ function Rama({ persona, porJefe, yo, onTocar }) {
         <View style={s.bajada} />
 
         <View style={s.columna}>
-          {/* La linea vertical que las une, detras de las cajas. */}
-          <View style={s.espina} />
-          {hijos.map((h) => (
+          {hijos.map((h, i) => (
             <View key={h.id} style={s.enFila}>
-              <View style={s.tick} />
+              {/* La vertical se dibuja por fila y no como una sola linea de
+                  fondo: asi no depende de que el contenedor tenga un alto
+                  ya calculado, que es lo que la hacia desaparecer. */}
+              <View style={s.espinaWrap}>
+                <View style={[s.espinaTramo, i === hijos.length - 1 && s.espinaCorta]} />
+                <View style={s.tick} />
+              </View>
               <Caja persona={h} esYo={h.id === yo} onTocar={onTocar} compacta />
             </View>
           ))}
@@ -149,27 +150,46 @@ function Rama({ persona, porJefe, yo, onTocar }) {
 
       {hijos.length ? (
         <>
-          {/* Baja del padre */}
           <View style={s.bajada} />
-
-          {/* Horizontal que une a los hermanos. Con un solo hijo no se
-              dibuja: quedaria un travesano de la nada. */}
-          {hijos.length > 1 ? (
-            <View style={s.travesanoWrap}>
-              <View style={s.travesano} />
-            </View>
-          ) : null}
-
           <View style={s.filaHijos}>
-            {hijos.map((h) => (
+            {hijos.map((h, i) => (
               <View key={h.id} style={s.hijo}>
-                {hijos.length > 1 ? <View style={s.subida} /> : null}
+                <Conector
+                  primero={i === 0}
+                  ultimo={i === hijos.length - 1}
+                  unico={hijos.length === 1}
+                />
                 <Rama persona={h} porJefe={porJefe} yo={yo} onTocar={onTocar} />
               </View>
             ))}
           </View>
         </>
       ) : null}
+    </View>
+  );
+}
+
+
+/**
+ * El tramo de linea que une a un hijo con su padre.
+ *
+ * En vez de dibujar un travesano que abarque toda la fila -que obligaria a
+ * medir el ancho de los hijos- cada hijo dibuja su propia mitad: la izquierda
+ * salvo que sea el primero, la derecha salvo que sea el ultimo, y siempre la
+ * bajada al centro. Las mitades de hermanos contiguos se tocan y forman la
+ * linea completa.
+ */
+function Conector({ primero, ultimo, unico, color }) {
+  const tinte = color ? { backgroundColor: color } : null;
+  return (
+    <View style={s.conector}>
+      {!unico ? (
+        <>
+          <View style={[s.mitad, tinte, primero && s.invisible]} />
+          <View style={[s.mitad, tinte, ultimo && s.invisible]} />
+        </>
+      ) : null}
+      <View style={[s.bajadaHijo, tinte]} />
     </View>
   );
 }
@@ -270,25 +290,30 @@ const s = StyleSheet.create({
   rama: { alignItems: 'center' },
   bajada: { width: 2, height: ALTO_RAMA, backgroundColor: C.line },
 
-  // El travesano se estira al ancho de la fila de hijos, y los extremos se
-  // recortan para que no sobresalga de la primera y la ultima caja.
-  travesanoWrap: { width: '100%', alignItems: 'center' },
-  travesano: {
-    height: 2, backgroundColor: C.line,
-    width: '100%', maxWidth: 4000,
+  // Alto fijo para que todos los hijos arranquen a la misma altura, y ancho
+  // completo para que las mitades de hermanos contiguos se toquen.
+  conector: { height: ALTO_RAMA, width: '100%', flexDirection: 'row' },
+  mitad: { flex: 1, height: 2, backgroundColor: C.line },
+  invisible: { backgroundColor: 'transparent' },
+  bajadaHijo: {
+    position: 'absolute', left: '50%', marginLeft: -1, top: 0,
+    width: 2, height: ALTO_RAMA, backgroundColor: C.line,
   },
-  subida: { width: 2, height: ALTO_RAMA, backgroundColor: C.line, alignSelf: 'center' },
 
   filaHijos: { flexDirection: 'row', alignItems: 'flex-start' },
 
-  columna: { alignItems: 'flex-start', paddingLeft: 2 },
-  // Detras de las cajas, uniendo todos los ticks.
-  espina: {
-    position: 'absolute', left: 2, top: 0, bottom: 18, width: 2,
+  columna: { alignItems: 'flex-start' },
+  enFila: { flexDirection: 'row', alignItems: 'stretch', marginBottom: 6 },
+  // Cada fila trae su tramo de vertical; encadenados forman la linea.
+  espinaWrap: { width: 16, justifyContent: 'center' },
+  espinaTramo: {
+    position: 'absolute', left: 0, top: -6, bottom: 0, width: 2,
     backgroundColor: C.line,
   },
-  enFila: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  tick: { width: 14, height: 2, backgroundColor: C.line },
+  // El ultimo corta a la mitad: la linea termina donde entra la caja, no
+  // sigue de largo hacia abajo.
+  espinaCorta: { bottom: '50%' },
+  tick: { width: 14, height: 2, backgroundColor: C.line, marginLeft: 2 },
   hijo: { alignItems: 'center', paddingHorizontal: SEPARACION / 2 },
 
   caja: {
