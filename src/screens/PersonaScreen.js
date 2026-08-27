@@ -48,6 +48,22 @@ export default function PersonaScreen({ route, navigation }) {
   };
 
   if (error) return <ErrorBox mensaje={error} onReintentar={cargar} />;
+  // Quien puede editar personas llega desde aca a cambiarle area, puesto
+  // y de quien depende.
+  useEffect(() => {
+    // puede_editar lo informa el servidor segun el permiso personas.editar.
+    if (!data || !data.puede_editar) return;
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable onPress={() => navigation.navigate('EditarPersona', { personaId: id })}
+          hitSlop={10} style={{ marginRight: 4 }}>
+          <MaterialIcons name="edit" size={21} color={C.navy} />
+        </Pressable>
+      ),
+    });
+  }, [navigation, id, data]);
+
+
   if (!data) return <Cargando texto="Cargando" />;
 
   const { persona, jefe, pares, equipo, cadena } = data;

@@ -407,6 +407,8 @@ export const admin = {
   candidatos: ()            => api.get('hub_admin.php', 'candidatos'),
   resetClave: (persona_id, entrega) => api.post('hub_admin.php', 'reset_clave', { persona_id, entrega }),
   actualizar:   (datos)     => api.post('hub_admin.php', 'actualizar', datos),
+  cambiarPerfil: (persona_id, perfil_id) =>
+    api.post('hub_admin.php', 'cambiar_perfil', { persona_id, perfil_id }),
   estado:     (persona_id, estado) => api.post('hub_admin.php', 'estado', { persona_id, estado }),
   auditoria:  (limit = 50)  => api.get('hub_admin.php', 'auditoria', { limit }),
 };
