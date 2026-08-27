@@ -6,6 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { organigrama } from '../api/client';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
 import Diagrama from '../Diagrama';
+import Zoomable from '../Zoomable';
 import { C, R, sombra, iniciales } from '../theme';
 
 export default function OrganigramaScreen({ navigation }) {
@@ -114,7 +115,9 @@ export default function OrganigramaScreen({ navigation }) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg }}>
         <Selector vista={vista} setVista={setVista} />
-        <Diagrama personas={data.items} yo={data.yo} onTocar={abrir} />
+        <Zoomable>
+          <Diagrama personas={data.items} yo={data.yo} onTocar={abrir} />
+        </Zoomable>
         {raices.length > 1 ? (
           <Text style={s.pieDiagrama}>
             {raices.length} personas sin jefe asignado. Tocá una para acomodarlo.

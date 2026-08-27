@@ -58,6 +58,9 @@ export default function Diagrama({ personas, yo, onTocar }) {
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={s.scrollH}
+      // Sin esto, al achicar con dos dedos el diagrama se recorta al ancho
+      // original en vez de mostrar lo que ahora entra.
+      style={{ flex: 1 }}
     >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollV}>
         {variasCabezas ? (
