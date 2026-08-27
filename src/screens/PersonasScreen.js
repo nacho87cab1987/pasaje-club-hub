@@ -5,7 +5,7 @@ import { admin } from '../api/client';
 import { Avatar, Cargando, ErrorBox, Vacio, Fila } from '../components/UI';
 import { C, R, sombra, iniciales } from '../theme';
 
-export default function PersonasScreen() {
+export default function PersonasScreen({ navigation }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [q, setQ] = useState('');
@@ -67,8 +67,12 @@ export default function PersonasScreen() {
           }
           renderItem={({ item, index }) => (
             <View style={[index === 0 && s.primera, s.envoltura, sombra]}>
-              <Fila ultima>
-                <Avatar persona={item} texto={iniciales(item.nombre_completo?.split(' ')[0], item.nombre_completo?.split(' ')[1])} />
+              <Fila ultima onPress={() => navigation.navigate('Persona', { id: item.id })}>
+                <Avatar
+                  persona={item}
+                  tam={46}
+                  texto={iniciales(item.nombre_completo?.split(' ')[0], item.nombre_completo?.split(' ')[1])}
+                />
                 <View style={{ flex: 1 }}>
                   <Text style={s.nom}>{item.nombre_completo}</Text>
                   <Text style={s.sub} numberOfLines={1}>
@@ -78,6 +82,7 @@ export default function PersonasScreen() {
                 {item.estado !== 'activo' ? (
                   <Text style={s.estado}>{item.estado}</Text>
                 ) : null}
+                <MaterialIcons name="chevron-right" size={20} color={C.ink3} />
               </Fila>
             </View>
           )}

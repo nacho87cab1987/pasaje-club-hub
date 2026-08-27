@@ -90,18 +90,23 @@ export function Tag({ texto, tipo = 'cool' }) {
 }
 
 export function Fila({ children, onPress, ultima }) {
-  const Comp = onPress ? Pressable : View;
+  const base = [
+    s.fila,
+    !ultima && { borderBottomWidth: 1, borderBottomColor: C.lineSoft },
+  ];
+
+  // Un View NO acepta una funcion como style: la ignora entera y se pierden
+  // el flexDirection y el padding. Por eso la fila sin onPress quedaba con
+  // los elementos apilados y pegados al borde.
+  if (!onPress) return <View style={base}>{children}</View>;
+
   return (
-    <Comp
+    <Pressable
       onPress={onPress}
-      style={({ pressed } = {}) => [
-        s.fila,
-        !ultima && { borderBottomWidth: 1, borderBottomColor: C.lineSoft },
-        pressed && { backgroundColor: C.lineSoft },
-      ]}
+      style={({ pressed }) => [...base, pressed && { backgroundColor: C.lineSoft }]}
     >
       {children}
-    </Comp>
+    </Pressable>
   );
 }
 
