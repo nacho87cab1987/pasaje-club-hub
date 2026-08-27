@@ -336,6 +336,11 @@ export const organigrama = {
   sueltos:     ()    => api.get('hub_organigrama.php', 'sueltos'),
   cambiarJefe: (persona_id, jefe_id) =>
     api.post('hub_organigrama.php', 'jefe', { persona_id, jefe_id }),
+  // Jefas adicionales: se suman a la principal, no la reemplazan.
+  jefeExtra: (persona_id, jefe_id, motivo) =>
+    api.post('hub_organigrama.php', 'jefe_extra', { persona_id, jefe_id, motivo }),
+  quitarJefeExtra: (persona_id, jefe_id) =>
+    api.post('hub_organigrama.php', 'quitar_jefe_extra', { persona_id, jefe_id }),
 };
 
 export const documentos = {

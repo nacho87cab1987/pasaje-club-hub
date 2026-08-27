@@ -116,12 +116,26 @@ function Caja({ persona, esYo, onTocar }) {
         <Text style={s.puesto} numberOfLines={2}>{persona.puesto}</Text>
       ) : null}
 
-      {aCargo > 0 ? (
-        <View style={[s.aCargo, { backgroundColor: `${color}1F` }]}>
-          <MaterialIcons name="group" size={10} color={color} />
-          <Text style={[s.aCargoN, { color }]}>{aCargo}</Text>
-        </View>
-      ) : null}
+      <View style={s.marcas}>
+        {aCargo > 0 ? (
+          <View style={[s.aCargo, { backgroundColor: `${color}1F` }]}>
+            <MaterialIcons name="group" size={10} color={color} />
+            <Text style={[s.aCargoN, { color }]}>{aCargo}</Text>
+          </View>
+        ) : null}
+
+        {/* Quien depende de dos areas se marca aca. En el arbol sigue
+            colgando de su jefa principal: dos ramas para la misma persona
+            harian ilegible el diagrama. */}
+        {persona.jefes_extra && persona.jefes_extra.length ? (
+          <View style={[s.aCargo, { backgroundColor: '#EEEDFE' }]}>
+            <MaterialIcons name="alt-route" size={10} color="#5B52C4" />
+            <Text style={[s.aCargoN, { color: '#5B52C4' }]}>
+              {persona.jefes_extra.length}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -163,9 +177,10 @@ const s = StyleSheet.create({
   puesto: {
     fontSize: 10, color: C.ink3, textAlign: 'center', marginTop: 2, lineHeight: 13,
   },
+  marcas: { flexDirection: 'row', gap: 5, marginTop: 7 },
   aCargo: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    borderRadius: 9, paddingHorizontal: 7, paddingVertical: 2, marginTop: 7,
+    borderRadius: 9, paddingHorizontal: 7, paddingVertical: 2,
   },
   aCargoN: { fontSize: 10, fontWeight: '700' },
 });

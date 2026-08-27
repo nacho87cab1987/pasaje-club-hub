@@ -78,6 +78,30 @@ export default function EditarPersonaScreen({ route, navigation }) {
     }
   };
 
+  const filaJefeExtra = {
+    campo: '__jefe_extra', titulo: 'Agregar otra jefa',
+    opciones: gente
+      .filter((g) => g.id !== persona?.jefe_id
+        && !(persona?.jefes_extra || []).some((j) => j.id === g.id))
+      .map((g) => ({ id: g.id, nombre: g.nombre, sub: g.puesto })),
+  };
+
+  const quitarJefeExtra = (j) => {
+    Alert.alert('Quitar', `${j.nombre} deja de ver a esta persona en su equipo.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Quitar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await organigrama.quitarJefeExtra(personaId, j.id);
+            await cargar();
+          } catch (e) { Alert.alert('No se pudo', e.message); }
+        },
+      },
+    ]);
+  };
+
   const eliminar = () => {
     const nombre = `${persona.nombre || ''} ${persona.apellido || ''}`.trim();
     Alert.alert(
@@ -92,6 +116,7 @@ export default function EditarPersonaScreen({ route, navigation }) {
           onPress: async () => {
             try {
               await admin.estado(personaId, 'baja');
+              // La baja conserva la ficha, asi que volver esta bien.
               navigation.goBack();
             } catch (e) { Alert.alert('No se pudo', e.message); }
           },
@@ -103,7 +128,10 @@ export default function EditarPersonaScreen({ route, navigation }) {
             try {
               await admin.eliminar(personaId);
               vibrar(true);
-              navigation.goBack();
+              // No se vuelve con goBack: atras esta la ficha de la persona
+              // que acabamos de eliminar, y al recargarse da "no encontrada".
+              // Se sale hasta la lista, que si existe.
+              navigation.popToTop();
             } catch (e) { Alert.alert('No se pudo eliminar', e.message); }
           },
         },
@@ -160,6 +188,17 @@ export default function EditarPersonaScreen({ route, navigation }) {
   ];
 
   const elegir = async (fila, opcion) => {
+    if (fila.campo === '__jefe_extra') {
+      setGuardando(true);
+      try {
+        await organigrama.jefeExtra(personaId, opcion.id);
+        vibrar();
+        await cargar();
+        setEligiendo(null);
+      } catch (e) { Alert.alert('No se pudo', e.message); }
+      finally { setGuardando(false); }
+      return;
+    }
     if (fila.accion === 'perfil') {
       setGuardando(true);
       try {
@@ -237,6 +276,32 @@ export default function EditarPersonaScreen({ route, navigation }) {
 
       <Text style={s.pie}>
         Cambiar el área recalcula a qué publicaciones del muro llega.
+      </Text>
+
+      <Text style={s.seccion}>TAMBIÉN REPORTA A</Text>
+      <Card>
+        {(persona.jefes_extra || []).map((j) => (
+          <View key={j.id} style={[s.fila, s.borde]}>
+            <MaterialIcons name="alt-route" size={20} color="#5B52C4" />
+            <View style={{ flex: 1 }}>
+              <Text style={s.filaV}>{j.nombre}</Text>
+              {j.motivo ? <Text style={s.filaT}>{j.motivo}</Text> : null}
+            </View>
+            <Pressable onPress={() => quitarJefeExtra(j)} hitSlop={8}>
+              <MaterialIcons name="close" size={19} color={C.bordo} />
+            </Pressable>
+          </View>
+        ))}
+        <Pressable style={s.fila} onPress={() => setEligiendo(filaJefeExtra)}>
+          <MaterialIcons name="add" size={20} color={C.tealDeep} />
+          <Text style={[s.filaV, { color: C.tealDeep, fontWeight: '600' }]}>
+            Agregar otra jefa
+          </Text>
+        </Pressable>
+      </Card>
+      <Text style={s.nota}>
+        La jefa principal es la que evalúa y define el organigrama. Las
+        adicionales ven a la persona en su equipo.
       </Text>
 
       <Pressable style={s.eliminar} onPress={eliminar}>
@@ -347,6 +412,7 @@ const s = StyleSheet.create({
   filaT: { fontSize: 11, color: C.ink3, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.4 },
   filaV: { fontSize: 15, color: C.ink, marginTop: 2, fontWeight: '500' },
   pie: { fontSize: 12, color: C.ink3, textAlign: 'center', marginTop: 16, lineHeight: 17 },
+  nota: { fontSize: 11.5, color: C.ink3, marginTop: 8, lineHeight: 16, paddingHorizontal: 4 },
   eliminar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderWidth: 1, borderColor: '#F0C0CC', borderRadius: R.md,
