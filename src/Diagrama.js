@@ -114,6 +114,35 @@ export default function Diagrama({ personas, yo, onTocar }) {
 function Rama({ persona, porJefe, yo, onTocar }) {
   const hijos = porJefe[persona.id] || [];
 
+  // Cuando alguien tiene varias personas a cargo y ninguna tiene equipo
+  // propio -el caso de una supervisora con sus vendedoras- se apilan hacia
+  // abajo en vez de abrirse a lo ancho.
+  //
+  // Un organigrama que crece a lo ancho obliga a desplazarse de costado para
+  // ver un solo nivel; creciendo hacia abajo se recorre como cualquier lista.
+  const todasHojas = hijos.every((h) => !(porJefe[h.id] || []).length);
+  const enColumna = hijos.length >= 3 && todasHojas;
+
+  if (enColumna) {
+    return (
+      <View style={s.rama}>
+        <Caja persona={persona} esYo={persona.id === yo} onTocar={onTocar} />
+        <View style={s.bajada} />
+
+        <View style={s.columna}>
+          {/* La linea vertical que las une, detras de las cajas. */}
+          <View style={s.espina} />
+          {hijos.map((h) => (
+            <View key={h.id} style={s.enFila}>
+              <View style={s.tick} />
+              <Caja persona={h} esYo={h.id === yo} onTocar={onTocar} compacta />
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={s.rama}>
       <Caja persona={persona} esYo={persona.id === yo} onTocar={onTocar} />
@@ -146,9 +175,36 @@ function Rama({ persona, porJefe, yo, onTocar }) {
 }
 
 
-function Caja({ persona, esYo, onTocar }) {
+function Caja({ persona, esYo, onTocar, compacta }) {
   const color = persona.area_color || C.tealDeep;
   const aCargo = persona.a_cargo || 0;
+
+  // Version en fila: ocupa menos alto y permite apilar muchas sin que el
+  // diagrama se vuelva larguisimo.
+  if (compacta) {
+    return (
+      <Pressable
+        style={[s.cajaCompacta, esYo && s.cajaYo, { borderLeftColor: color }]}
+        onPress={() => onTocar && onTocar(persona)}
+      >
+        <Avatar
+          texto={iniciales(...String(persona.nombre).split(' '))}
+          tam={28}
+          fondo={`${color}1F`}
+          color={color}
+        />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.nombreCompacto} numberOfLines={1}>{persona.nombre}</Text>
+          {persona.puesto ? (
+            <Text style={s.puestoCompacto} numberOfLines={1}>{persona.puesto}</Text>
+          ) : null}
+        </View>
+        {persona.jefes_extra && persona.jefes_extra.length ? (
+          <MaterialIcons name="alt-route" size={13} color="#5B52C4" />
+        ) : null}
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable
@@ -224,6 +280,15 @@ const s = StyleSheet.create({
   subida: { width: 2, height: ALTO_RAMA, backgroundColor: C.line, alignSelf: 'center' },
 
   filaHijos: { flexDirection: 'row', alignItems: 'flex-start' },
+
+  columna: { alignItems: 'flex-start', paddingLeft: 2 },
+  // Detras de las cajas, uniendo todos los ticks.
+  espina: {
+    position: 'absolute', left: 2, top: 0, bottom: 18, width: 2,
+    backgroundColor: C.line,
+  },
+  enFila: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  tick: { width: 14, height: 2, backgroundColor: C.line },
   hijo: { alignItems: 'center', paddingHorizontal: SEPARACION / 2 },
 
   caja: {
@@ -232,6 +297,14 @@ const s = StyleSheet.create({
     alignItems: 'center', borderWidth: 1, borderColor: C.line,
   },
   cajaYo: { borderWidth: 1.5, borderColor: C.teal, borderTopWidth: 3 },
+  cajaCompacta: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    width: ANCHO_CAJA + 46, backgroundColor: '#fff', borderRadius: R.sm,
+    borderLeftWidth: 3, paddingHorizontal: 9, paddingVertical: 7,
+    borderWidth: 1, borderColor: C.line,
+  },
+  nombreCompacto: { fontSize: 12, fontWeight: '600', color: C.ink },
+  puestoCompacto: { fontSize: 9.5, color: C.ink3, marginTop: 1 },
   nombre: {
     fontSize: 12.5, fontWeight: '700', color: C.ink,
     textAlign: 'center', marginTop: 7, lineHeight: 16,
