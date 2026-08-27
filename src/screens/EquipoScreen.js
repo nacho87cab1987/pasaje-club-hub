@@ -70,7 +70,7 @@ export default function EquipoScreen({ navigation }) {
           })}
         >
           <View style={s.top}>
-            <Avatar
+            <Avatar persona={item}
               texto={iniciales(...String(item.nombre).split(' '))}
               tam={40}
               fondo={item.soy_yo ? C.navy : C.tealSoft}

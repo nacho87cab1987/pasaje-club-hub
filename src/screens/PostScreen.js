@@ -89,7 +89,7 @@ export default function PostScreen({ route }) {
             onLongPress={() => item.soy_yo && ocultar(item.id)}
             style={[s.com, item.padre_id && { marginLeft: 34 }]}
           >
-            <Avatar texto={iniciales(String(item.autor).split(' ')[0], String(item.autor).split(' ')[1])} tam={34} />
+            <Avatar persona={item} texto={iniciales(String(item.autor).split(' ')[0], String(item.autor).split(' ')[1])} tam={34} />
             <View style={{ flex: 1 }}>
               <View style={s.burbuja}>
                 <Text style={s.autor}>{item.autor}</Text>

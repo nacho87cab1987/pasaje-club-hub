@@ -70,7 +70,7 @@ export function AdminScreen({ navigation }) {
       renderItem={({ item }) => (
         <View style={[s.envoltura, sombra]}>
           <Fila ultima onPress={() => navigation.navigate('AdminPersona', { id: item.id, nombre: item.nombre_completo })}>
-            <Avatar texto={iniciales(item.nombre_completo?.split(' ')[0], item.nombre_completo?.split(' ')[1])} />
+            <Avatar persona={item} texto={iniciales(item.nombre_completo?.split(' ')[0], item.nombre_completo?.split(' ')[1])} />
             <View style={{ flex: 1 }}>
               <Text style={s.nom}>{item.nombre_completo}</Text>
               <Text style={s.sub}>{item.perfil || item.perfil_slug}</Text>
@@ -156,7 +156,7 @@ export function AdminPersonaScreen({ route, navigation }) {
     <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 14, paddingBottom: 34 }}>
       <Card>
         <View style={s.cab}>
-          <Avatar texto={iniciales(p.nombre, p.apellido)} tam={48} />
+          <Avatar persona={p} texto={iniciales(p.nombre, p.apellido)} tam={48} />
           <View style={{ flex: 1 }}>
             <Text style={s.cabNom}>{p.nombre_completo}</Text>
             <Text style={s.cabSub}>

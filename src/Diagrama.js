@@ -207,7 +207,8 @@ function Caja({ persona, esYo, onTocar, compacta }) {
         style={[s.cajaCompacta, esYo && s.cajaYo, { borderLeftColor: color }]}
         onPress={() => onTocar && onTocar(persona)}
       >
-        <Avatar
+        <Avatar persona={persona}
+          persona={persona}
           texto={iniciales(...String(persona.nombre).split(' '))}
           tam={28}
           fondo={`${color}1F`}
@@ -231,7 +232,8 @@ function Caja({ persona, esYo, onTocar, compacta }) {
       style={[s.caja, esYo && s.cajaYo, { borderTopColor: color }]}
       onPress={() => onTocar && onTocar(persona)}
     >
-      <Avatar
+      <Avatar persona={persona}
+        persona={persona}
         texto={iniciales(...String(persona.nombre).split(' '))}
         tam={38}
         fondo={`${color}1F`}

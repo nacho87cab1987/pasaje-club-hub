@@ -66,7 +66,7 @@ export default function OnboardingGenteScreen({ navigation }) {
             ? navigation.navigate('Onboarding', { personaId: item.id, nombre: item.nombre })
             : data.puede_asignar ? asignar(item) : null)}
         >
-          <Avatar texto={iniciales(...String(item.nombre).split(' '))} tam={40} />
+          <Avatar persona={item} texto={iniciales(...String(item.nombre).split(' '))} tam={40} />
 
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={s.nombre} numberOfLines={1}>{item.nombre}</Text>

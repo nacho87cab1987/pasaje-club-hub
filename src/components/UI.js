@@ -1,12 +1,37 @@
-import React from 'react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  Image, View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { C, R, sombra } from '../theme';
+import { imagenUrl } from '../api/client';
 
-export function Avatar({ texto, tam = 40, fondo = C.tealSoft, color = C.tealDeep }) {
+/**
+ * Foto de perfil, con las iniciales como respaldo.
+ *
+ * Las iniciales quedan DEBAJO de la imagen, no en su lugar: asi se ven
+ * mientras la foto carga, y si la foto falla no queda un circulo vacio.
+ */
+export function Avatar({ texto, foto, persona, tam = 40, fondo = C.tealSoft, color = C.tealDeep }) {
+  const [falla, setFalla] = useState(false);
+
+  // Cada API nombra la foto distinto (foto, foto_url, avatar). Se aceptan
+  // todas para no tener que recordar cual usa cada pantalla.
+  const ruta = foto
+    || (persona && (persona.foto || persona.foto_url || persona.avatar))
+    || null;
+  const uri = ruta ? imagenUrl(ruta) : null;
+
   return (
     <View style={[s.av, { width: tam, height: tam, borderRadius: tam / 2, backgroundColor: fondo }]}>
       <Text style={{ color, fontWeight: '700', fontSize: tam * 0.34 }}>{texto}</Text>
+
+      {uri && !falla ? (
+        <Image
+          source={{ uri }}
+          style={[s.avFoto, { width: tam, height: tam, borderRadius: tam / 2 }]}
+          onError={() => setFalla(true)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -111,6 +136,7 @@ export function Seccion({ titulo }) {
 }
 
 const s = StyleSheet.create({
+  avFoto: { position: 'absolute', left: 0, top: 0 },
   av: { alignItems: 'center', justifyContent: 'center' },
   card: { backgroundColor: C.card, borderRadius: R.lg, overflow: 'hidden' },
   centro: { alignItems: 'center', justifyContent: 'center', padding: 34, flex: 1 },

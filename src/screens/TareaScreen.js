@@ -159,7 +159,7 @@ export default function TareaScreen({ route, navigation }) {
             <Card>
               {t.asignados.map((a, i) => (
                 <View key={a.id} style={[s.persona, i < t.asignados.length - 1 && s.borde]}>
-                  <Avatar
+                  <Avatar persona={a}
                     texto={iniciales(...String(a.nombre).split(' '))}
                     tam={34}
                     fondo={a.color || C.tealSoft}

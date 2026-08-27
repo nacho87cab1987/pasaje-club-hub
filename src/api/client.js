@@ -26,7 +26,16 @@ export function imagenUrl(ruta) {
   // .htaccess. Pedirlas por URL directa devolvia 404 o 403, que es por lo
   // que no se veian los adjuntos del chat.
   const limpia = String(ruta).replace(/^\/?(socios\/)?/, '');
-  if (limpia.startsWith('uploads/')) {
+
+  // Todo lo que vive en las carpetas del hub va por el entregador: la
+  // carpeta esta cerrada por .htaccess y pedirla directo da 403.
+  //
+  // 'perfil/...' y 'muro/...' son las fotos que guarda hub_subir.php; el
+  // resto de los adjuntos cuelga de 'uploads/'.
+  if (limpia.startsWith('uploads/')
+      || limpia.startsWith('perfil/')
+      || limpia.startsWith('muro/')
+      || limpia.startsWith('crm/')) {
     return `${API}/hub_img.php?f=${encodeURIComponent(limpia)}`;
   }
 

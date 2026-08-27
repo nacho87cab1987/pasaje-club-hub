@@ -217,6 +217,7 @@ export default function EditarPersonaScreen({ route, navigation }) {
     <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 14, paddingBottom: 40 }}>
       <View style={[s.cab, sombra]}>
         <Avatar
+          persona={persona}
           texto={iniciales(persona.nombre, persona.apellido)}
           tam={56}
         />

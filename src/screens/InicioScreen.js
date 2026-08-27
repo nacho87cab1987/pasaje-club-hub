@@ -270,7 +270,7 @@ function Cumples({ items, onVerTodos }) {
       <View style={s.cumplesRow}>
         {lista.map((c) => (
           <View key={c.id} style={{ alignItems: 'center', width: 64 }}>
-            <Avatar
+            <Avatar persona={c}
               texto={iniciales(
                 String(c.nombre_completo || '').split(' ')[0],
                 String(c.nombre_completo || '').split(' ')[1],
@@ -298,7 +298,7 @@ function Post({ post, onReaccion, onAbrir, onMenu, onAmpliar, alTocarMenu }) {
   return (
     <View style={[s.card, sombra]}>
       <View style={s.cab}>
-        <Avatar
+        <Avatar persona={post.autor}
           texto={post.oficial ? 'PC' : iniciales(partes[0], partes[1])}
           fondo={post.oficial ? C.navy : C.tealSoft}
           color={post.oficial ? C.teal : C.tealDeep}

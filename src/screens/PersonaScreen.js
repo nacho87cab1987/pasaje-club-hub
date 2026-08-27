@@ -73,7 +73,7 @@ export default function PersonaScreen({ route, navigation }) {
       style={[s.ficha, sombra, chico && { padding: 9 }]}
       onPress={() => navigation.push('Persona', { id: p.id, nombre: p.nombre })}
     >
-      <Avatar
+      <Avatar persona={p}
         texto={iniciales(...String(p.nombre).split(' '))}
         tam={chico ? 32 : 38}
         fondo={p.area_color ? `${p.area_color}22` : C.tealSoft}
@@ -112,7 +112,7 @@ export default function PersonaScreen({ route, navigation }) {
 
       <Card>
         <View style={s.cab}>
-          <Avatar
+          <Avatar persona={persona}
             texto={iniciales(...String(persona.nombre).split(' '))}
             tam={62}
             fondo={persona.area_color ? `${persona.area_color}22` : C.tealSoft}

@@ -68,7 +68,7 @@ export default function PersonasScreen() {
           renderItem={({ item, index }) => (
             <View style={[index === 0 && s.primera, s.envoltura, sombra]}>
               <Fila ultima>
-                <Avatar texto={iniciales(item.nombre_completo?.split(' ')[0], item.nombre_completo?.split(' ')[1])} />
+                <Avatar persona={item} texto={iniciales(item.nombre_completo?.split(' ')[0], item.nombre_completo?.split(' ')[1])} />
                 <View style={{ flex: 1 }}>
                   <Text style={s.nom}>{item.nombre_completo}</Text>
                   <Text style={s.sub} numberOfLines={1}>

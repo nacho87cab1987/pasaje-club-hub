@@ -176,7 +176,7 @@ export default function AltaPersonaScreen({ navigation }) {
                       size={21}
                       color={sel ? C.teal : C.ink3}
                     />
-                    <Avatar texto={iniciales(...String(c.nombre).split(' '))} tam={32} />
+                    <Avatar persona={c} texto={iniciales(...String(c.nombre).split(' '))} tam={32} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.candNom}>{c.nombre || '(sin nombre)'}</Text>
                       <Text style={s.candSub} numberOfLines={1}>{c.email} · {c.tipo}</Text>

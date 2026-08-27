@@ -69,7 +69,7 @@ export default function DesempenoEquipoScreen({ navigation }) {
               personaId: item.id, nombre: item.nombre,
             })}
           >
-            <Avatar texto={iniciales(...String(item.nombre).split(' '))} tam={40} />
+            <Avatar persona={item} texto={iniciales(...String(item.nombre).split(' '))} tam={40} />
 
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={s.nombre} numberOfLines={1}>{item.nombre}</Text>

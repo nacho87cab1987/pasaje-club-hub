@@ -173,7 +173,7 @@ export default function SubirDocumentoScreen({ navigation }) {
                     <MaterialIcons
                       name={personaId === p.id ? 'radio-button-checked' : 'radio-button-unchecked'}
                       size={20} color={personaId === p.id ? C.teal : C.ink3} />
-                    <Avatar texto={iniciales(...String(p.nombre).split(' '))} tam={30} />
+                    <Avatar persona={p} texto={iniciales(...String(p.nombre).split(' '))} tam={30} />
                     <Text style={s.personaNom}>{p.nombre}</Text>
                   </Pressable>
                 ))}

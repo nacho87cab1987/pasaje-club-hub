@@ -125,7 +125,8 @@ export default function CumpleanosScreen({ navigation }) {
               </Text>
             </View>
 
-            <Avatar
+            <Avatar persona={item}
+              persona={item}
               texto={iniciales(...String(item.nombre_completo).split(' '))}
               tam={40}
               fondo={hoy ? '#fff' : C.tealSoft}

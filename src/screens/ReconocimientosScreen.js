@@ -114,7 +114,7 @@ export default function ReconocimientosScreen({ navigation }) {
               ) : null}
 
               <View style={s.personas}>
-                <Avatar texto={iniciales(...String(item.para.nombre).split(' '))} tam={36} />
+                <Avatar persona={item.para} texto={iniciales(...String(item.para.nombre).split(' '))} tam={36} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={s.para} numberOfLines={1}>
                     {item.para.soy_yo ? 'Vos' : item.para.nombre}

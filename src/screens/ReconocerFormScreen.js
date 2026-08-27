@@ -77,7 +77,7 @@ export default function ReconocerFormScreen({ navigation, route }) {
         <Text style={s.paso}>¿A QUIÉN?</Text>
         {para ? (
           <Pressable style={[s.elegida, sombra]} onPress={() => setPara(null)}>
-            <Avatar texto={iniciales(...String(para.nombre).split(' '))} tam={40} />
+            <Avatar persona={para} texto={iniciales(...String(para.nombre).split(' '))} tam={40} />
             <View style={{ flex: 1 }}>
               <Text style={s.elegidaN}>{para.nombre}</Text>
               {para.puesto ? <Text style={s.elegidaP}>{para.puesto}</Text> : null}
@@ -99,7 +99,7 @@ export default function ReconocerFormScreen({ navigation, route }) {
             <View style={s.grid}>
               {filtrados.slice(0, 12).map((p) => (
                 <Pressable key={p.id} style={s.persona} onPress={() => { vibrar(); setPara(p); }}>
-                  <Avatar texto={iniciales(...String(p.nombre).split(' '))} tam={46} />
+                  <Avatar persona={p} texto={iniciales(...String(p.nombre).split(' '))} tam={46} />
                   <Text style={s.personaN} numberOfLines={2}>
                     {String(p.nombre).split(' ')[0]}
                   </Text>
