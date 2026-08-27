@@ -55,6 +55,7 @@ import PasajitoScreen from '../screens/PasajitoScreen';
 import DesempenoScreen from '../screens/DesempenoScreen';
 import ReconocimientosScreen from '../screens/ReconocimientosScreen';
 import EditarPersonaScreen from '../screens/EditarPersonaScreen';
+import CatalogosScreen from '../screens/CatalogosScreen';
 import ReconocerFormScreen from '../screens/ReconocerFormScreen';
 import EventosScreen from '../screens/EventosScreen';
 import EventoScreen from '../screens/EventoScreen';
@@ -188,6 +189,7 @@ export default function RootNavigator() {
             <Stack.Screen name="Desempeno" component={DesempenoScreen} options={{ title: 'Desempeño' }} />
             <Stack.Screen name="Reconocimientos" component={ReconocimientosScreen} options={{ title: 'Reconocimientos' }} />
             <Stack.Screen name="EditarPersona" component={EditarPersonaScreen} options={{ title: 'Editar' }} />
+            <Stack.Screen name="Catalogos" component={CatalogosScreen} options={{ title: 'Áreas y puestos' }} />
             <Stack.Screen name="ReconocerForm" component={ReconocerFormScreen} options={{ title: 'Reconocer a alguien' }} />
             <Stack.Screen name="Eventos" component={EventosScreen} options={{ title: 'Eventos' }} />
             <Stack.Screen name="Evento" component={EventoScreen} options={{ title: '' }} />

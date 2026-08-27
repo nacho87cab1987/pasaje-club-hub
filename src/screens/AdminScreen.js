@@ -48,6 +48,16 @@ export function AdminScreen({ navigation }) {
             </View>
             <MaterialIcons name="chevron-right" size={20} color="#7FA6B5" />
           </Pressable>
+
+          <Pressable style={[s.catalogos, sombra]} onPress={() => navigation.navigate('Catalogos')}>
+            <MaterialIcons name="category" size={20} color={C.tealDeep} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.catTit}>Áreas y puestos</Text>
+              <Text style={s.catSub}>Crealos y editalos sin tocar la base</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={19} color={C.ink3} />
+          </Pressable>
+
           <View style={s.aviso}>
             <MaterialIcons name="info-outline" size={18} color={C.tealDeep} />
             <Text style={s.avisoTxt}>
@@ -202,6 +212,12 @@ export function AdminPersonaScreen({ route, navigation }) {
 }
 
 const s = StyleSheet.create({
+  catalogos: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff',
+    borderRadius: R.md, padding: 13, marginTop: 10,
+  },
+  catTit: { fontSize: 14.5, fontWeight: '600', color: C.ink },
+  catSub: { fontSize: 11.5, color: C.ink3, marginTop: 1 },
   aviso: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 9, backgroundColor: C.tealSoft,
     padding: 13, borderRadius: R.md, marginBottom: 12, marginTop: 12,

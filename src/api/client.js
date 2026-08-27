@@ -409,6 +409,9 @@ export const admin = {
   actualizar:   (datos)     => api.post('hub_admin.php', 'actualizar', datos),
   cambiarPerfil: (persona_id, perfil_id) =>
     api.post('hub_admin.php', 'cambiar_perfil', { persona_id, perfil_id }),
+  guardarArea:   (datos) => api.post('hub_admin.php', 'guardar_area', datos),
+  guardarPuesto: (datos) => api.post('hub_admin.php', 'guardar_puesto', datos),
+  bajaCatalogo:  (tipo, id) => api.post('hub_admin.php', 'baja_catalogo', { tipo, id }),
   estado:     (persona_id, estado) => api.post('hub_admin.php', 'estado', { persona_id, estado }),
   auditoria:  (limit = 50)  => api.get('hub_admin.php', 'auditoria', { limit }),
 };
