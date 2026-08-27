@@ -31,6 +31,28 @@ export default function Diagrama({ personas, yo, onTocar }) {
 
   const raices = porJefe.raiz || [];
 
+  // Quienes cuelgan de cualquiera de las cabezas. Se juntan en una sola fila
+  // porque el equipo depende de la direccion, no de uno u otro director: si
+  // cada uno lleva su propia rama, el mismo nivel jerarquico queda dibujado
+  // a dos alturas distintas y no se entiende.
+  const hijosDeDireccion = [];
+  raices.forEach((r) => {
+    (porJefe[r.id] || []).forEach((h) => {
+      if (!hijosDeDireccion.some((x) => x.id === h.id)) {
+        // Se guarda de que director cuelga: al juntarlos en un bloque se
+        // perderia el dato, y con dos directores importa saberlo.
+        hijosDeDireccion.push({ ...h, _director: r.id });
+      }
+    });
+  });
+
+  const colorDirector = {};
+  raices.forEach((r, i) => {
+    colorDirector[r.id] = r.area_color || (i === 0 ? C.tealDeep : '#790F35');
+  });
+
+  const variasCabezas = raices.length > 1;
+
   return (
     <ScrollView
       horizontal
@@ -38,17 +60,42 @@ export default function Diagrama({ personas, yo, onTocar }) {
       contentContainerStyle={s.scrollH}
     >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollV}>
-        {/* Varias personas sin jefe = varias cabezas. Se dibujan lado a lado
-            y unidas por una linea, que es como se lee una direccion
-            compartida. */}
-        {raices.length > 1 ? (
-          <View style={s.cabezas}>
-            <View style={s.lineaCabezas} />
-            <View style={s.filaHijos}>
-              {raices.map((p) => (
-                <Rama key={p.id} persona={p} porJefe={porJefe} yo={yo} onTocar={onTocar} />
-              ))}
+        {variasCabezas ? (
+          <View style={s.rama}>
+            {/* La direccion como un bloque, no como cajas sueltas. */}
+            <View style={s.bloque}>
+              <Text style={s.bloqueTit}>DIRECCIÓN</Text>
+              <View style={s.bloqueCajas}>
+                {raices.map((p) => (
+                  <View key={p.id} style={s.cabeza}>
+                    <Caja persona={p} esYo={p.id === yo} onTocar={onTocar} />
+                    <View style={[s.marcaDirector, { backgroundColor: colorDirector[p.id] }]} />
+                  </View>
+                ))}
+              </View>
             </View>
+
+            {hijosDeDireccion.length ? (
+              <>
+                <View style={s.bajada} />
+                {hijosDeDireccion.length > 1 ? (
+                  <View style={s.travesanoWrap}>
+                    <View style={s.travesano} />
+                  </View>
+                ) : null}
+                <View style={s.filaHijos}>
+                  {hijosDeDireccion.map((h) => (
+                    <View key={h.id} style={s.hijo}>
+                      {hijosDeDireccion.length > 1 ? (
+                        <View style={[s.subida,
+                                      { backgroundColor: colorDirector[h._director] || C.line }]} />
+                      ) : null}
+                      <Rama persona={h} porJefe={porJefe} yo={yo} onTocar={onTocar} />
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : null}
           </View>
         ) : (
           raices.map((p) => (
@@ -144,8 +191,22 @@ const s = StyleSheet.create({
   scrollH: { paddingHorizontal: 20, paddingVertical: 8 },
   scrollV: { paddingBottom: 40, alignItems: 'center' },
 
-  cabezas: { alignItems: 'center' },
-  lineaCabezas: { width: 1, height: 0 },
+  bloque: {
+    backgroundColor: '#fff', borderRadius: R.lg, paddingHorizontal: 14,
+    paddingTop: 9, paddingBottom: 13, borderWidth: 2, borderColor: C.navy,
+    alignItems: 'center',
+    shadowColor: '#072D40', shadowOpacity: 0.12, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 }, elevation: 4,
+  },
+  bloqueTit: {
+    fontSize: 10, fontWeight: '800', letterSpacing: 1.4, color: C.navy,
+    marginBottom: 9,
+  },
+  bloqueCajas: { flexDirection: 'row', gap: 12 },
+  cabeza: { alignItems: 'center' },
+  // La barrita bajo cada director se repite en la linea de sus ramas: con
+  // dos directores, es lo que dice quien lleva que.
+  marcaDirector: { width: 30, height: 3, borderRadius: 2, marginTop: 6 },
 
   rama: { alignItems: 'center' },
   bajada: { width: 2, height: ALTO_RAMA, backgroundColor: C.line },
@@ -165,9 +226,7 @@ const s = StyleSheet.create({
   caja: {
     width: ANCHO_CAJA, backgroundColor: '#fff', borderRadius: R.md,
     borderTopWidth: 3, paddingHorizontal: 9, paddingTop: 11, paddingBottom: 10,
-    alignItems: 'center',
-    shadowColor: '#072D40', shadowOpacity: 0.09, shadowRadius: 7,
-    shadowOffset: { width: 0, height: 2 }, elevation: 2,
+    alignItems: 'center', borderWidth: 1, borderColor: C.line,
   },
   cajaYo: { borderWidth: 1.5, borderColor: C.teal, borderTopWidth: 3 },
   nombre: {
