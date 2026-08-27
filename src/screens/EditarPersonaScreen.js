@@ -18,6 +18,7 @@ export default function EditarPersonaScreen({ route, navigation }) {
   const [eligiendo, setEligiendo] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [busca, setBusca] = useState('');
+  const [texto, setTexto] = useState(null);   // campo de texto en edicion
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -56,6 +57,58 @@ export default function EditarPersonaScreen({ route, navigation }) {
     } finally {
       setGuardando(false);
     }
+  };
+
+  const guardarTexto = async () => {
+    const valor = String(texto.valor || '').trim();
+    if (texto.requerido && valor.length < 2) {
+      Alert.alert('Falta el dato', `${texto.titulo} no puede quedar vacío.`);
+      return;
+    }
+    setGuardando(true);
+    try {
+      await admin.actualizar({ persona_id: personaId, [texto.campo]: valor });
+      vibrar();
+      await cargar();
+      setTexto(null);
+    } catch (e) {
+      Alert.alert('No se pudo', e.message);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const eliminar = () => {
+    const nombre = `${persona.nombre || ''} ${persona.apellido || ''}`.trim();
+    Alert.alert(
+      'Eliminar del hub',
+      `${nombre} deja de existir en el hub. Su cuenta del panel y sus expedientes `
+      + 'no se tocan.\n\nSi la persona se fue de la empresa, conviene darle de baja '
+      + 'en lugar de eliminarla: así conserva su historial.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Dar de baja',
+          onPress: async () => {
+            try {
+              await admin.estado(personaId, 'baja');
+              navigation.goBack();
+            } catch (e) { Alert.alert('No se pudo', e.message); }
+          },
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await admin.eliminar(personaId);
+              vibrar(true);
+              navigation.goBack();
+            } catch (e) { Alert.alert('No se pudo eliminar', e.message); }
+          },
+        },
+      ],
+    );
   };
 
   if (error) return <ErrorBox mensaje={error} onReintentar={cargar} />;
@@ -136,6 +189,32 @@ export default function EditarPersonaScreen({ route, navigation }) {
         </View>
       </View>
 
+      <Text style={s.seccion}>DATOS</Text>
+      <Card>
+        {[
+          { campo: 'nombre',   titulo: 'Nombre',   icono: 'person', requerido: true },
+          { campo: 'apellido', titulo: 'Apellido', icono: 'person-outline', requerido: true },
+          { campo: 'telefono', titulo: 'Teléfono', icono: 'phone', teclado: 'phone-pad' },
+          { campo: 'dni',      titulo: 'DNI',      icono: 'badge', teclado: 'number-pad' },
+          { campo: 'legajo',   titulo: 'Legajo',   icono: 'tag' },
+        ].map((f, i, arr) => (
+          <Pressable
+            key={f.campo}
+            style={[s.fila, i < arr.length - 1 && s.borde]}
+            onPress={() => setTexto({ ...f, valor: persona[f.campo] || '' })}
+          >
+            <MaterialIcons name={f.icono} size={20} color={C.ink3} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.filaT}>{f.titulo}</Text>
+              <Text style={[s.filaV, !persona[f.campo] && { color: C.ink3, fontStyle: 'italic' }]}>
+                {persona[f.campo] || 'Sin cargar'}
+              </Text>
+            </View>
+            <MaterialIcons name="edit" size={18} color={C.tealDeep} />
+          </Pressable>
+        ))}
+      </Card>
+
       <Text style={s.seccion}>SU LUGAR EN LA EMPRESA</Text>
       <Card>
         {filas.map((f, i) => (
@@ -159,6 +238,42 @@ export default function EditarPersonaScreen({ route, navigation }) {
       <Text style={s.pie}>
         Cambiar el área recalcula a qué publicaciones del muro llega.
       </Text>
+
+      <Pressable style={s.eliminar} onPress={eliminar}>
+        <MaterialIcons name="person-remove" size={18} color={C.bordo} />
+        <Text style={s.eliminarTxt}>Dar de baja o eliminar</Text>
+      </Pressable>
+
+      <Modal visible={!!texto} animationType="slide" transparent
+        onRequestClose={() => setTexto(null)}>
+        <Pressable style={s.fondo} onPress={() => setTexto(null)} />
+        <View style={s.hoja}>
+          <View style={s.hojaTop}>
+            <Text style={s.hojaTit}>{texto?.titulo}</Text>
+            <Pressable onPress={() => setTexto(null)} hitSlop={10}>
+              <MaterialIcons name="close" size={22} color={C.ink3} />
+            </Pressable>
+          </View>
+          <View style={{ padding: 16 }}>
+            <TextInput
+              style={s.input}
+              value={texto?.valor}
+              onChangeText={(t) => setTexto((x) => ({ ...x, valor: t }))}
+              placeholder={texto?.titulo}
+              placeholderTextColor={C.ink3}
+              keyboardType={texto?.teclado || 'default'}
+              autoFocus
+            />
+            <Pressable
+              style={[s.guardar, guardando && { opacity: 0.5 }]}
+              onPress={guardarTexto}
+              disabled={guardando}
+            >
+              <Text style={s.guardarTxt}>Guardar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={!!eligiendo}
@@ -232,6 +347,21 @@ const s = StyleSheet.create({
   filaT: { fontSize: 11, color: C.ink3, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.4 },
   filaV: { fontSize: 15, color: C.ink, marginTop: 2, fontWeight: '500' },
   pie: { fontSize: 12, color: C.ink3, textAlign: 'center', marginTop: 16, lineHeight: 17 },
+  eliminar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 1, borderColor: '#F0C0CC', borderRadius: R.md,
+    paddingVertical: 14, marginTop: 22,
+  },
+  eliminarTxt: { fontSize: 14, fontWeight: '600', color: C.bordo },
+  input: {
+    borderWidth: 1, borderColor: C.line, borderRadius: R.md, paddingHorizontal: 13,
+    paddingVertical: 12, fontSize: 16, color: C.ink,
+  },
+  guardar: {
+    backgroundColor: C.navy, borderRadius: R.md, paddingVertical: 15,
+    alignItems: 'center', marginTop: 18,
+  },
+  guardarTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
   fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.4)' },
   hoja: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '78%' },
   hojaTop: {
