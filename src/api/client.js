@@ -275,6 +275,19 @@ export const eventos = {
   eliminar: (evento_id) => api.post('hub_eventos.php', 'eliminar', { evento_id }),
 };
 
+export const encuestas = {
+  listar:     ()        => api.get('hub_encuestas.php', 'listar'),
+  encuesta:   (id)      => api.get('hub_encuestas.php', 'encuesta', { id }),
+  resultados: (id)      => api.get('hub_encuestas.php', 'resultados', { id }),
+  responder:  (encuesta_id, respuestas) =>
+    api.post('hub_encuestas.php', 'responder', { encuesta_id, respuestas }),
+  guardar:    (datos)   => api.post('hub_encuestas.php', 'guardar', datos),
+  estado:     (encuesta_id, estado) =>
+    api.post('hub_encuestas.php', 'estado', { encuesta_id, estado }),
+  eliminar:   (encuesta_id, confirmar) =>
+    api.post('hub_encuestas.php', 'eliminar', { encuesta_id, confirmar }),
+};
+
 export const reconocimientos = {
   muro:    ()      => api.get('hub_reconocimientos.php', 'muro'),
   mios:    ()      => api.get('hub_reconocimientos.php', 'mios'),

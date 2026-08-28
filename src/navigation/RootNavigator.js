@@ -54,6 +54,10 @@ import VentasScreen from '../screens/VentasScreen';
 import PasajitoScreen from '../screens/PasajitoScreen';
 import DesempenoScreen from '../screens/DesempenoScreen';
 import ReconocimientosScreen from '../screens/ReconocimientosScreen';
+import EncuestasScreen from '../screens/EncuestasScreen';
+import EncuestaScreen from '../screens/EncuestaScreen';
+import EncuestaResultadosScreen from '../screens/EncuestaResultadosScreen';
+import EncuestaFormScreen from '../screens/EncuestaFormScreen';
 import EditarPersonaScreen from '../screens/EditarPersonaScreen';
 import CatalogosScreen from '../screens/CatalogosScreen';
 import ReconocerFormScreen from '../screens/ReconocerFormScreen';
@@ -188,6 +192,10 @@ export default function RootNavigator() {
             <Stack.Screen name="Pasajito" component={PasajitoScreen} options={{ title: 'Pasajito' }} />
             <Stack.Screen name="Desempeno" component={DesempenoScreen} options={{ title: 'Desempeño' }} />
             <Stack.Screen name="Reconocimientos" component={ReconocimientosScreen} options={{ title: 'Reconocimientos' }} />
+            <Stack.Screen name="Encuestas" component={EncuestasScreen} options={{ title: 'Encuestas' }} />
+            <Stack.Screen name="Encuesta" component={EncuestaScreen} options={{ title: '' }} />
+            <Stack.Screen name="EncuestaResultados" component={EncuestaResultadosScreen} options={{ title: 'Resultados' }} />
+            <Stack.Screen name="EncuestaForm" component={EncuestaFormScreen} options={{ title: 'Nueva encuesta' }} />
             <Stack.Screen name="EditarPersona" component={EditarPersonaScreen} options={{ title: 'Editar' }} />
             <Stack.Screen name="Catalogos" component={CatalogosScreen} options={{ title: 'Áreas y puestos' }} />
             <Stack.Screen name="ReconocerForm" component={ReconocerFormScreen} options={{ title: 'Reconocer a alguien' }} />
