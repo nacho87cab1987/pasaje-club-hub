@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, Dimensions, Animated,
   Vibration, Platform,
@@ -209,4 +209,53 @@ const s = StyleSheet.create({
   },
   borde: { borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   opcionT: { fontSize: 15, color: C.ink },
+});
+
+
+// ----------------------------------------------------------------------------
+
+/**
+ * El mismo menu, pero manejado por referencia en vez de por estado.
+ *
+ * Abrir el menu con useState obliga a redibujar TODA la pantalla, y en una
+ * pantalla con una lista larga -el chat- eso hace que la lista se reacomode y
+ * pierda la posicion del scroll.
+ *
+ * Con este, el estado vive adentro del propio menu: la pantalla no se entera
+ * de que se abrio y no se vuelve a dibujar.
+ *
+ * Se usa asi:
+ *   const menu = useRef(null);
+ *   <Pressable onPressIn={(e) => menu.current.marcar(e)}
+ *              onPress={() => menu.current.abrir({ titulo, opciones })} />
+ *   <MenuAnclado ref={menu} />
+ */
+export const MenuAnclado = forwardRef((props, ref) => {
+  const [datos, setDatos] = useState(null);
+  const pos = useRef({ x: 0, y: 0 });
+
+  useImperativeHandle(ref, () => ({
+    // Guarda donde toco el dedo. onPress no trae coordenadas; onPressIn si.
+    marcar: (e) => {
+      const n = e && e.nativeEvent;
+      if (n) pos.current = { x: n.pageX, y: n.pageY };
+    },
+    abrir: (d) => {
+      vibrar();
+      setDatos({ ...d, x: pos.current.x, y: pos.current.y });
+    },
+    cerrar: () => setDatos(null),
+  }), []);
+
+  return (
+    <MenuContextual
+      visible={!!datos}
+      x={datos && datos.x}
+      y={datos && datos.y}
+      titulo={datos && datos.titulo}
+      subtitulo={datos && datos.subtitulo}
+      opciones={datos && datos.opciones}
+      onCerrar={() => setDatos(null)}
+    />
+  );
 });

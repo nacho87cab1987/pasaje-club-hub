@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, StyleSheet, Pressable, Alert,
   KeyboardAvoidingView, Platform, ActivityIndicator, Modal, ScrollView, Image,
@@ -8,7 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { crmApi, imagenUrl, etiquetasApi } from '../api/client';
 import { elegirImagenes } from '../imagenes';
 import VisorImagen from '../VisorImagen';
-import MenuContextual, { usarPosicionToque, vibrar } from '../MenuContextual';
+import { MenuAnclado, vibrar } from '../MenuContextual';
 import AdjuntoArchivo, { AdjuntoImagen, pesoLegible } from '../AdjuntoArchivo';
 import { useAuth } from '../context/AuthContext';
 import { Cargando, ErrorBox, Tag } from '../components/UI';
@@ -47,12 +47,10 @@ export default function CrmChatScreen({ route, navigation }) {
   const crm = crmApi(boot && boot.credencial);
 
   const [conv, setConv] = useState(null);
-  const ctx = usarPosicionToque();
-  // Se invierte una sola vez por cambio de mensajes, no en cada dibujado.
-  const mensajesInvertidos = useMemo(
-    () => (mensajes ? [...mensajes].reverse() : []),
-    [mensajes],
-  );
+  // Referencia y no estado: abrir el menu no redibuja la pantalla, asi la
+  // lista de mensajes no se reacomoda ni pierde la posicion.
+  const menuRef = useRef(null);
+
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState(null);
   const [texto, setTexto] = useState(route.params?.textoInicial || '');
@@ -191,7 +189,11 @@ export default function CrmChatScreen({ route, navigation }) {
       navigation.setOptions({
         title: n || route.params.nombre || 'Conversacion',
         headerRight: () => (
-          <Pressable onPress={menuPrincipal} onPressIn={ctx.alTocar} hitSlop={10}>
+          <Pressable
+          onPress={menuPrincipal}
+          onPressIn={(e) => menuRef.current && menuRef.current.marcar(e)}
+          hitSlop={10}
+        >
             <MaterialIcons name="more-vert" size={22} color={C.navy} />
           </Pressable>
         ),
@@ -236,7 +238,7 @@ export default function CrmChatScreen({ route, navigation }) {
       ? `${conv.cliente_nombre || ''} ${conv.cliente_apellido || ''}`.trim()
       : null;
 
-    ctx.abrir({
+    menuRef.current && menuRef.current.abrir({
       titulo: cliente || 'Conversación',
       subtitulo: conv ? [conv.codigo, conv.destino].filter(Boolean).join(' · ') : null,
       opciones: [
@@ -302,8 +304,7 @@ export default function CrmChatScreen({ route, navigation }) {
       setTexto('');
       setAdjuntos([]);
       await cargar();
-      // Con la lista invertida, el final de la conversacion es el offset 0.
-      setTimeout(() => lista.current && lista.current.scrollToOffset({ offset: 0, animated: true }), 250);
+      setTimeout(() => lista.current && lista.current.scrollToEnd({ animated: true }), 250);
     } catch (e) {
       Alert.alert('No se pudo enviar', e.message);
     } finally {
@@ -357,17 +358,7 @@ export default function CrmChatScreen({ route, navigation }) {
 
       <FlatList
         ref={lista}
-        // La lista va INVERTIDA, como cualquier chat.
-        //
-        // Asi el mensaje mas nuevo esta en la posicion 0 y el scroll arranca
-        // desde abajo. Deja de existir el problema de "saltar al principio":
-        // el principio de la lista ES el final de la conversacion.
-        //
-        // Antes se intento anclar la posicion y evitar los reajustes, pero
-        // eso peleaba contra el comportamiento normal de la lista cada vez
-        // que algo cambiaba el alto. Invertida, no hay nada que compensar.
-        inverted
-        data={mensajesInvertidos}
+        data={mensajes}
         keyExtractor={(m) => String(m.id)}
         contentContainerStyle={{ padding: 14 }}
         renderItem={({ item }) => {
@@ -616,15 +607,7 @@ export default function CrmChatScreen({ route, navigation }) {
       />
       </KeyboardAvoidingView>
 
-      <MenuContextual
-        visible={!!ctx.menu}
-        x={ctx.menu && ctx.menu.x}
-        y={ctx.menu && ctx.menu.y}
-        titulo={ctx.menu && ctx.menu.titulo}
-        subtitulo={ctx.menu && ctx.menu.subtitulo}
-        opciones={ctx.menu && ctx.menu.opciones}
-        onCerrar={ctx.cerrar}
-      />
+      <MenuAnclado ref={menuRef} />
     </View>
   );
 }
