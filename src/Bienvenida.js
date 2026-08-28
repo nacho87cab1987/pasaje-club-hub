@@ -117,8 +117,15 @@ export default function Bienvenida({ onTerminar }) {
       {ANIMACION === 'trazo' ? (
         // Se revela recortando el ancho del contenedor, no escalando la
         // imagen: asi el logo no se deforma mientras aparece.
-        <Animated.View style={{ width: recorte, overflow: 'hidden', opacity: v.opacidad }}>
-          <View style={{ width: ancho }}>{logo}</View>
+        //
+        // La opacidad y el ancho van en vistas SEPARADAS a proposito: el
+        // ancho solo puede animarse por JavaScript y la opacidad va por el
+        // motor nativo. Las dos sobre el mismo elemento hacen que React
+        // Native cierre la app.
+        <Animated.View style={{ opacity: v.opacidad }}>
+          <Animated.View style={{ width: recorte, overflow: 'hidden' }}>
+            <View style={{ width: ancho }}>{logo}</View>
+          </Animated.View>
         </Animated.View>
       ) : (
         <Animated.View style={{
