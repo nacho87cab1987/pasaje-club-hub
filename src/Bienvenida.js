@@ -66,12 +66,18 @@ export default function Bienvenida({ onTerminar }) {
       ]).start(listo);
 
     } else if (ANIMACION === 'trazo') {
+      // El barrido se hace corriendo una TAPA del color del fondo, no
+      // animando el ancho.
+      //
+      // Animar un ancho obliga a usar el motor de JavaScript, y al abrir la
+      // app ese hilo esta ocupado cargando: la animacion se traba a la mitad
+      // y queda el logo cortado. Mover una tapa es un desplazamiento, y eso
+      // corre en el motor nativo, que no se entera de lo que hace la app.
+      v.opacidad.setValue(1);
       Animated.sequence([
-        Animated.timing(v.opacidad, { toValue: 1, duration: 180, useNativeDriver: true }),
-        // El ancho no puede ir por el driver nativo: se anima en JS.
-        Animated.timing(v.ancho, { toValue: 1, duration: 560, useNativeDriver: false,
+        Animated.timing(v.ancho, { toValue: 1, duration: 620, useNativeDriver: true,
           easing: Easing.inOut(Easing.cubic) }),
-        Animated.delay(240),
+        Animated.delay(260),
         Animated.timing(v.salida, { toValue: 0, duration: 340, useNativeDriver: true }),
       ]).start(listo);
 
@@ -88,14 +94,17 @@ export default function Bienvenida({ onTerminar }) {
     }
   }, []);
 
-  const ancho = Math.min(230, Dimensions.get('window').width * 0.58);
+  // Mas contenido que antes: a 230 ocupaba mas de la mitad del ancho y
+  // quedaba pesado.
+  const ancho = Math.min(170, Dimensions.get('window').width * 0.44);
 
   const desplazamiento = v.subir.interpolate({
     inputRange: [0, 1], outputRange: [26, 0],
   });
 
-  const recorte = v.ancho.interpolate({
-    inputRange: [0, 1], outputRange: [0, ancho],
+  // La tapa arranca cubriendo el logo y se corre hacia la derecha.
+  const tapa = v.ancho.interpolate({
+    inputRange: [0, 1], outputRange: [0, ancho + 4],
   });
 
   const logo = (
@@ -115,18 +124,13 @@ export default function Bienvenida({ onTerminar }) {
       pointerEvents="none"
     >
       {ANIMACION === 'trazo' ? (
-        // Se revela recortando el ancho del contenedor, no escalando la
-        // imagen: asi el logo no se deforma mientras aparece.
-        //
-        // La opacidad y el ancho van en vistas SEPARADAS a proposito: el
-        // ancho solo puede animarse por JavaScript y la opacidad va por el
-        // motor nativo. Las dos sobre el mismo elemento hacen que React
-        // Native cierre la app.
-        <Animated.View style={{ opacity: v.opacidad }}>
-          <Animated.View style={{ width: recorte, overflow: 'hidden' }}>
-            <View style={{ width: ancho }}>{logo}</View>
-          </Animated.View>
-        </Animated.View>
+        <View style={{ width: ancho }}>
+          {logo}
+          <Animated.View
+            style={[s.tapa, { transform: [{ translateX: tapa }] }]}
+            pointerEvents="none"
+          />
+        </View>
       ) : (
         <Animated.View style={{
           opacity: v.opacidad,
@@ -141,6 +145,12 @@ export default function Bienvenida({ onTerminar }) {
 }
 
 const s = StyleSheet.create({
+  // Del mismo color que el fondo: al correrse, va dejando ver el logo.
+  tapa: {
+    position: 'absolute',
+    top: -8, bottom: -8, left: -2, right: -2,
+    backgroundColor: C.navyLogo || C.navy,
+  },
   capa: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
