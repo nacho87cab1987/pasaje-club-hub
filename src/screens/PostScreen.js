@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { muro, imagenUrl } from '../api/client';
-import VisorImagen from '../VisorImagen';
+import VisorPost from '../VisorPost';
 import { abrirArchivo } from '../archivos';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
 import { C, R, iniciales } from '../theme';
@@ -109,9 +109,9 @@ export default function PostScreen({ route }) {
                   <Pressable
                     key={m2.id}
                     style={post.media.length === 1 ? s.mediaSola : s.mediaChica}
-                    onPress={() => (m2.tipo === 'video'
-                      ? abrirArchivo(imagenUrl(m2.url), m2.nombre)
-                      : setViendo({ uri: imagenUrl(m2.url), nombre: m2.nombre }))}
+                    onPress={() => setViendo({
+                      indice: post.media.findIndex((x) => x.id === m2.id),
+                    })}
                   >
                     <Image
                       source={{ uri: imagenUrl(m2.miniatura || m2.url) }}
@@ -179,6 +179,14 @@ export default function PostScreen({ route }) {
             : <MaterialIcons name="send" size={19} color="#fff" />}
         </Pressable>
       </View>
+
+      <VisorPost
+        visible={!!viendo}
+        postId={id}
+        media={post ? post.media : []}
+        indice={viendo ? viendo.indice : 0}
+        onCerrar={() => { setViendo(null); cargar(); }}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -6,7 +6,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { muro, perfil as perfilApi, imagenUrl, notificaciones } from '../api/client';
 import { ponerBadge } from '../push';
-import VisorImagen from '../VisorImagen';
+import VisorPost from '../VisorPost';
 import { abrirArchivo } from '../archivos';
 import MenuContextual, { usarPosicionToque } from '../MenuContextual';
 import { useAuth } from '../context/AuthContext';
@@ -40,6 +40,8 @@ export default function InicioScreen({ navigation }) {
   const [siguiente, setSiguiente] = useState(null);
   const vistos = useRef(new Set());
   const [sinLeer, setSinLeer] = useState(0);
+  // Guarda el post entero, no solo la imagen: el visor muestra tambien sus
+  // comentarios.
   const [viendo, setViendo] = useState(null);
   const ctx = usarPosicionToque();
 
@@ -226,9 +228,11 @@ export default function InicioScreen({ navigation }) {
             post={item}
             onReaccion={reaccionar}
             onAbrir={() => navigation.navigate('Post', { id: item.id })}
-            onAmpliar={(m) => (m.tipo === 'video'
-              ? abrirArchivo(imagenUrl(m.url), m.nombre)
-              : setViendo({ uri: imagenUrl(m.url), nombre: m.nombre }))}
+            onAmpliar={(m) => setViendo({
+              postId: item.id,
+              media: item.media || [],
+              indice: Math.max(0, (item.media || []).findIndex((x) => x.url === m.url)),
+            })}
             onMenu={tieneMenu(item) ? () => menu(item) : null}
             alTocarMenu={ctx.alTocar}
           />
@@ -245,10 +249,12 @@ export default function InicioScreen({ navigation }) {
         onCerrar={ctx.cerrar}
       />
 
-      <VisorImagen
+      <VisorPost
         visible={!!viendo}
-        uri={viendo && viendo.uri}
-        onCerrar={() => setViendo(null)}
+        postId={viendo && viendo.postId}
+        media={viendo && viendo.media}
+        indice={viendo ? viendo.indice : 0}
+        onCerrar={() => { setViendo(null); cargar(); }}
       />
     </View>
   );
