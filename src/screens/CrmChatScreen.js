@@ -8,7 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { crmApi, imagenUrl, etiquetasApi } from '../api/client';
 import { elegirImagenes } from '../imagenes';
 import VisorImagen from '../VisorImagen';
-import { vibrar } from '../MenuContextual';
+import MenuContextual, { usarPosicionToque, vibrar } from '../MenuContextual';
 import AdjuntoArchivo, { AdjuntoImagen, pesoLegible } from '../AdjuntoArchivo';
 import { useAuth } from '../context/AuthContext';
 import { Cargando, ErrorBox, Tag } from '../components/UI';
@@ -47,6 +47,7 @@ export default function CrmChatScreen({ route, navigation }) {
   const crm = crmApi(boot && boot.credencial);
 
   const [conv, setConv] = useState(null);
+  const ctx = usarPosicionToque();
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState(null);
   const [texto, setTexto] = useState(route.params?.textoInicial || '');
@@ -185,7 +186,7 @@ export default function CrmChatScreen({ route, navigation }) {
       navigation.setOptions({
         title: n || route.params.nombre || 'Conversacion',
         headerRight: () => (
-          <Pressable onPress={menuPrincipal} hitSlop={10}>
+          <Pressable onPress={menuPrincipal} onPressIn={ctx.alTocar} hitSlop={10}>
             <MaterialIcons name="more-vert" size={22} color={C.navy} />
           </Pressable>
         ),
@@ -226,17 +227,27 @@ export default function CrmChatScreen({ route, navigation }) {
   };
 
   const menuPrincipal = () => {
-    Alert.alert('Conversacion', null, [
-      // Lo mas util del modulo: estas hablando con el cliente y le mandas
-      // el presupuesto sin salir de la conversacion.
-      { text: 'Enviar presupuesto',
-        onPress: () => navigation.navigate('Presupuestos', { conversacionId: id }) },
-      { text: 'Derivar a otra vendedora', onPress: derivar },
-      { text: 'Datos del cliente', onPress: () => setVerFicha(true) },
-      { text: 'Etiquetas', onPress: () => setVerEtiquetas(true) },
-      { text: 'Cambiar estado', onPress: cambiarEstado },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
+    const cliente = conv
+      ? `${conv.cliente_nombre || ''} ${conv.cliente_apellido || ''}`.trim()
+      : null;
+
+    ctx.abrir({
+      titulo: cliente || 'Conversación',
+      subtitulo: conv ? [conv.codigo, conv.destino].filter(Boolean).join(' · ') : null,
+      opciones: [
+        // Lo mas util del modulo: estas hablando con el cliente y le mandas
+        // el presupuesto sin salir de la conversacion.
+        {
+          texto: 'Enviar presupuesto',
+          icono: 'request-quote',
+          onPress: () => navigation.navigate('Presupuestos', { conversacionId: id }),
+        },
+        { texto: 'Cambiar estado',   icono: 'flag',           onPress: cambiarEstado },
+        { texto: 'Etiquetas',        icono: 'label-outline',  onPress: () => setVerEtiquetas(true) },
+        { texto: 'Datos del cliente',icono: 'person-outline', onPress: () => setVerFicha(true) },
+        { texto: 'Derivar',          icono: 'swap-horiz',     onPress: derivar },
+      ],
+    });
   };
 
   const cambiarEstado = () => {
@@ -566,6 +577,16 @@ export default function CrmChatScreen({ route, navigation }) {
           })}
         </View>
       </Hoja>
+
+      <MenuContextual
+        visible={!!ctx.menu}
+        x={ctx.menu && ctx.menu.x}
+        y={ctx.menu && ctx.menu.y}
+        titulo={ctx.menu && ctx.menu.titulo}
+        subtitulo={ctx.menu && ctx.menu.subtitulo}
+        opciones={ctx.menu && ctx.menu.opciones}
+        onCerrar={ctx.cerrar}
+      />
 
       <VisorImagen
         visible={!!viendo}
