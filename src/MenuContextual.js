@@ -230,7 +230,7 @@ const s = StyleSheet.create({
  *              onPress={() => menu.current.abrir({ titulo, opciones })} />
  *   <MenuAnclado ref={menu} />
  */
-export const MenuAnclado = forwardRef((props, ref) => {
+export const MenuAnclado = forwardRef(({ onCerrado }, ref) => {
   const [datos, setDatos] = useState(null);
   const pos = useRef({ x: 0, y: 0 });
 
@@ -243,8 +243,11 @@ export const MenuAnclado = forwardRef((props, ref) => {
     abrir: (d) => {
       vibrar();
       setDatos({ ...d, x: pos.current.x, y: pos.current.y });
+      // La pantalla puede necesitar reacomodarse despues de que el menu
+      // aparezca: se avisa tambien al abrir, no solo al cerrar.
+      if (onCerrado) setTimeout(onCerrado, 60);
     },
-    cerrar: () => setDatos(null),
+    cerrar: () => { setDatos(null); if (onCerrado) onCerrado(); },
   }), []);
 
   return (
@@ -255,7 +258,7 @@ export const MenuAnclado = forwardRef((props, ref) => {
       titulo={datos && datos.titulo}
       subtitulo={datos && datos.subtitulo}
       opciones={datos && datos.opciones}
-      onCerrar={() => setDatos(null)}
+      onCerrar={() => { setDatos(null); if (onCerrado) onCerrado(); }}
     />
   );
 });

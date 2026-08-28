@@ -50,6 +50,9 @@ export default function CrmChatScreen({ route, navigation }) {
   // Referencia y no estado: abrir el menu no redibuja la pantalla, asi la
   // lista de mensajes no se reacomoda ni pierde la posicion.
   const menuRef = useRef(null);
+  // Donde esta parada la lista. Se guarda mientras se recorre para poder
+  // volver ahi si algo la mueve.
+  const posicion = useRef(0);
 
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState(null);
@@ -233,11 +236,31 @@ export default function CrmChatScreen({ route, navigation }) {
     ]);
   };
 
+  /**
+   * Devuelve la lista a donde estaba.
+   *
+   * Se probaron varias formas de evitar que se moviera -sacar el Modal, mover
+   * el menu de contenedor, anclar la posicion, no redibujar la pantalla- y en
+   * todos los casos algo la seguia arrastrando. Restaurar la posicion resuelve
+   * el sintoma sin depender de cual sea la causa.
+   *
+   * Se hace dos veces porque el reacomodo no siempre ocurre en el mismo
+   * cuadro: una enseguida y otra despues de que termine de dibujarse.
+   */
+  const volverAlLugar = () => {
+    const y = posicion.current;
+    if (!y) return;   // ya estaba arriba
+    const ir = () => lista.current && lista.current.scrollToOffset({ offset: y, animated: false });
+    setTimeout(ir, 0);
+    setTimeout(ir, 180);
+  };
+
   const menuPrincipal = () => {
     const cliente = conv
       ? `${conv.cliente_nombre || ''} ${conv.cliente_apellido || ''}`.trim()
       : null;
 
+    volverAlLugar();
     menuRef.current && menuRef.current.abrir({
       titulo: cliente || 'Conversación',
       subtitulo: conv ? [conv.codigo, conv.destino].filter(Boolean).join(' · ') : null,
@@ -360,6 +383,8 @@ export default function CrmChatScreen({ route, navigation }) {
         ref={lista}
         data={mensajes}
         keyExtractor={(m) => String(m.id)}
+        onScroll={(e) => { posicion.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={32}
         contentContainerStyle={{ padding: 14 }}
         renderItem={({ item }) => {
           const nota = item.autor_tipo === 'nota' || item.direccion === 'nota';
@@ -607,7 +632,7 @@ export default function CrmChatScreen({ route, navigation }) {
       />
       </KeyboardAvoidingView>
 
-      <MenuAnclado ref={menuRef} />
+      <MenuAnclado ref={menuRef} onCerrado={volverAlLugar} />
     </View>
   );
 }
