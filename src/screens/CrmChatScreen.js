@@ -8,6 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { crmApi, imagenUrl, etiquetasApi } from '../api/client';
 import { elegirImagenes } from '../imagenes';
 import VisorImagen from '../VisorImagen';
+import { vibrar } from '../MenuContextual';
 import AdjuntoArchivo, { AdjuntoImagen, pesoLegible } from '../AdjuntoArchivo';
 import { useAuth } from '../context/AuthContext';
 import { Cargando, ErrorBox, Tag } from '../components/UI';
@@ -192,12 +193,45 @@ export default function CrmChatScreen({ route, navigation }) {
     }
   }, [conv, navigation]);
 
+  // Pasarle la conversacion a otra persona. El servidor valida el alcance:
+  // una supervisora solo mueve dentro de su equipo.
+  const derivar = async () => {
+    let gente = [];
+    try {
+      const r = await crm.vendedores();
+      gente = (r.items || r.vendedores || []).filter((v) => v.id !== conv?.vendedor_id);
+    } catch (e) {
+      Alert.alert('No se pudo', 'No pude traer la lista de vendedoras.');
+      return;
+    }
+    if (!gente.length) {
+      Alert.alert('Sin destinatarios', 'No hay otra vendedora a quien derivar.');
+      return;
+    }
+
+    Alert.alert('Derivar a', 'La conversación pasa a ser suya y le avisamos.', [
+      ...gente.slice(0, 8).map((v) => ({
+        text: `${v.nombre || ''} ${v.apellido || ''}`.trim(),
+        onPress: async () => {
+          try {
+            await crm.derivar(id, v.id);
+            vibrar(true);
+            Alert.alert('Listo', 'Ya no aparece en tu lista.',
+              [{ text: 'Ok', onPress: () => navigation.goBack() }]);
+          } catch (e) { Alert.alert('No se pudo derivar', e.message); }
+        },
+      })),
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
+
   const menuPrincipal = () => {
     Alert.alert('Conversacion', null, [
       // Lo mas util del modulo: estas hablando con el cliente y le mandas
       // el presupuesto sin salir de la conversacion.
       { text: 'Enviar presupuesto',
         onPress: () => navigation.navigate('Presupuestos', { conversacionId: id }) },
+      { text: 'Derivar a otra vendedora', onPress: derivar },
       { text: 'Datos del cliente', onPress: () => setVerFicha(true) },
       { text: 'Etiquetas', onPress: () => setVerEtiquetas(true) },
       { text: 'Cambiar estado', onPress: cambiarEstado },

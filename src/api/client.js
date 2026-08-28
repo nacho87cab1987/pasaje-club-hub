@@ -190,6 +190,10 @@ export function crmApi(credencial) {
     // Para el admin: la lista completa de vendedoras. Un supervisor la
     // recibe dentro de la respuesta de list, pero el admin no.
     vendedores: ()             => api.get('crm_conversaciones.php', 'vendedores_admin'),
+    // Derivar: el admin usa 'reasignar', la supervisora 'reasignar_equipo'.
+    // llamar() reintenta con la variante correcta segun la credencial.
+    derivar:   (id, vendedor_id) =>
+      llamar(admin ? 'reasignar' : 'reasignar_equipo', 'POST', { id, vendedor_id }),
     estado:    (id, estado, prioridad) => llamar('cambiar_estado', 'POST', { id, estado, prioridad }),
 
     // Estas dos son iguales para todos: no tienen variante _admin.

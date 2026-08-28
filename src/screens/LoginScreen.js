@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, KeyboardAvoidingView,
-  Platform, ScrollView, Pressable, Image,
+  Platform, ScrollView, Pressable, Image, ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-import { Boton } from '../components/UI';
 import { C, R } from '../theme';
 
 export default function LoginScreen() {
@@ -84,9 +83,21 @@ export default function LoginScreen() {
           </View>
         ) : null}
 
-        <View style={{ marginTop: 18 }}>
-          <Boton texto="Entrar" onPress={enviar} cargando={cargando} />
-        </View>
+        {/* El fondo del login es navy y el boton tambien: sobre ese fondo
+            quedaba como texto suelto. En teal se lee como boton. */}
+        <Pressable
+          onPress={cargando ? undefined : enviar}
+          style={({ pressed }) => [s.entrar, pressed && { opacity: 0.85 }]}
+        >
+          {cargando ? (
+            <ActivityIndicator color={C.navy} size="small" />
+          ) : (
+            <>
+              <Text style={s.entrarTxt}>Entrar</Text>
+              <MaterialIcons name="arrow-forward" size={19} color={C.navy} />
+            </>
+          )}
+        </Pressable>
 
         <Text style={s.pie}>Si no podes entrar, escribile a administracion.</Text>
       </ScrollView>
@@ -112,5 +123,12 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(240,149,149,0.14)', padding: 12, borderRadius: R.md,
   },
   errorTxt: { color: '#F7C1C1', fontSize: 13.5, flex: 1, lineHeight: 19 },
+  entrar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: C.teal, borderRadius: 14, paddingVertical: 16, marginTop: 20,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 }, elevation: 4,
+  },
+  entrarTxt: { color: C.navy, fontWeight: '700', fontSize: 16 },
   pie: { color: '#7FA6B5', fontSize: 12.5, textAlign: 'center', marginTop: 22 },
 });

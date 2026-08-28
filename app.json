@@ -9,12 +9,14 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.pasajeclub.hub",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.pasajeclub.hub",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/isotipo.png",
         "backgroundColor": "#072E40"
@@ -46,14 +48,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Pasaje Club necesita acceso a tus fotos para que puedas compartirlas en el muro.",
-          "cameraPermission": "Pasaje Club necesita la camara para que puedas sacar fotos y compartirlas."
+          "photosPermission": "Pasaje Club usa tus fotos para que puedas adjuntarlas al muro, a las conversaciones del CRM y a los reconocimientos.",
+          "cameraPermission": "Pasaje Club usa la camara para que puedas sacar una foto y adjuntarla al muro, al CRM o a un reconocimiento."
         }
       ],
       [
         "expo-audio",
         {
-          "microphonePermission": "Pasaje Club necesita el microfono para que puedas mandar audios a tus clientes."
+          "microphonePermission": "Pasaje Club usa el microfono para grabar notas de voz y mandarlas a tus clientes por el CRM o preguntarle a Pasajito."
         }
       ],
       "expo-sharing",
