@@ -409,6 +409,10 @@ export async function subirDocumento(archivo, datos) {
 }
 
 export const gestion = {
+  subtarea:     (parent_id, titulo) =>
+    api.post('hub_gestion.php', 'subtarea', { parent_id, titulo }),
+  deExpediente: (expediente_id) =>
+    api.get('hub_gestion.php', 'de_expediente', { expediente_id }),
   misTareas: (params)      => api.get('hub_gestion.php', 'mis_tareas', params),
   tarea:     (id)          => api.get('hub_gestion.php', 'tarea', { id }),
   espacios:  ()            => api.get('hub_gestion.php', 'espacios'),

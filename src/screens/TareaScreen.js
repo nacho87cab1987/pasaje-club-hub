@@ -30,6 +30,7 @@ export default function TareaScreen({ route, navigation }) {
   const { id } = route.params;
   const [data, setData] = useState(null);
   const ctx = usarPosicionToque();
+  const [nuevaSub, setNuevaSub] = useState('');
   const [error, setError] = useState(null);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -42,6 +43,25 @@ export default function TareaScreen({ route, navigation }) {
   }, [id]);
 
   useEffect(() => navigation.addListener('focus', cargar), [navigation, cargar]);
+  const agregarSub = async () => {
+    const t = nuevaSub.trim();
+    if (!t) return;
+    setNuevaSub('');
+    try {
+      await gestion.subtarea(id, t);
+      vibrar();
+      await cargar();
+    } catch (e) { Alert.alert('No se pudo', e.message); }
+  };
+
+  const completarSub = async (x) => {
+    vibrar();
+    try {
+      await gestion.completar(x.id, !x.completada);
+      await cargar();
+    } catch (e) { Alert.alert('No se pudo', e.message); }
+  };
+
   const menu = () => {
     const t = data.tarea;
     ctx.abrir({
@@ -192,22 +212,67 @@ export default function TareaScreen({ route, navigation }) {
           </>
         ) : null}
 
-        {data.subtareas && data.subtareas.length ? (
+        {data.expediente ? (
+          <Pressable
+            style={[s.expediente, sombra]}
+            onPress={() => navigation.navigate('Expediente', {
+              id: data.expediente.id, codigo: data.expediente.codigo,
+            })}
+          >
+            <MaterialIcons name="folder-special" size={20} color={C.tealDeep} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.expT}>{data.expediente.cliente_nombre}</Text>
+              <Text style={s.expS}>
+                {[data.expediente.codigo, data.expediente.destino].filter(Boolean).join(' · ')}
+              </Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={19} color={C.ink3} />
+          </Pressable>
+        ) : null}
+
+        {data.subtareas ? (
           <>
-            <Text style={s.seccion}>SUBTAREAS</Text>
+            <View style={s.seccionFila}>
+              <Text style={s.seccion}>SUBTAREAS</Text>
+              {data.subtareas.length ? (
+                <Text style={s.avance}>
+                  {data.sub_hechas || 0}/{data.subtareas.length}
+                </Text>
+              ) : null}
+            </View>
+
             <Card>
               {data.subtareas.map((x, i) => (
-                <View key={x.id} style={[s.persona, i < data.subtareas.length - 1 && s.borde]}>
+                <Pressable
+                  key={x.id}
+                  style={[s.sub, i < data.subtareas.length - 1 && s.borde]}
+                  onPress={() => completarSub(x)}
+                >
                   <MaterialIcons
                     name={x.completada ? 'check-circle' : 'radio-button-unchecked'}
-                    size={19}
+                    size={21}
                     color={x.completada ? C.ok : C.ink3}
                   />
-                  <Text style={[s.personaNom, x.completada && s.tachado]} numberOfLines={2}>
+                  <Text style={[s.subTxt, x.completada && s.subHecha]} numberOfLines={2}>
                     {x.titulo}
                   </Text>
-                </View>
+                </Pressable>
               ))}
+
+              {/* Agregar al vuelo, sin abrir otra pantalla: una subtarea se
+                  anota mientras se lee la tarea madre. */}
+              <View style={[s.sub, data.subtareas.length ? s.bordeArriba : null]}>
+                <MaterialIcons name="add" size={20} color={C.tealDeep} />
+                <TextInput
+                  style={s.subInput}
+                  value={nuevaSub}
+                  onChangeText={setNuevaSub}
+                  placeholder="Agregar un paso"
+                  placeholderTextColor={C.ink3}
+                  onSubmitEditing={agregarSub}
+                  returnKeyType="done"
+                />
+              </View>
             </Card>
           </>
         ) : null}
@@ -283,6 +348,19 @@ const s = StyleSheet.create({
   descTxt: { fontSize: 14.5, lineHeight: 21, color: C.ink2 },
   seccion: { fontSize: 11.5, fontWeight: '700', letterSpacing: 1, color: C.ink3, marginTop: 20, marginBottom: 9 },
   persona: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 14, paddingVertical: 11 },
+  seccionFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  avance: { fontSize: 12, fontWeight: '700', color: C.tealDeep },
+  sub: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 11 },
+  subTxt: { flex: 1, fontSize: 14.5, color: C.ink },
+  subHecha: { textDecorationLine: 'line-through', color: C.ink3 },
+  subInput: { flex: 1, fontSize: 14.5, color: C.ink, paddingVertical: 2 },
+  bordeArriba: { borderTopWidth: 1, borderTopColor: C.lineSoft },
+  expediente: {
+    flexDirection: 'row', alignItems: 'center', gap: 11, backgroundColor: '#fff',
+    borderRadius: R.md, padding: 13, marginTop: 14,
+  },
+  expT: { fontSize: 14.5, fontWeight: '600', color: C.ink },
+  expS: { fontSize: 11.5, color: C.ink3, marginTop: 2 },
   borde: { borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   personaNom: { flex: 1, fontSize: 14, fontWeight: '500', color: C.ink },
   vacio: { fontSize: 13, color: C.ink3, textAlign: 'center', paddingVertical: 14 },

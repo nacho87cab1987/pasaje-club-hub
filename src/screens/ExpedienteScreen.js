@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { expedientes } from '../api/client';
+import { expedientes, gestion } from '../api/client';
 import { Cargando, ErrorBox, Card } from '../components/UI';
 import { C, R, sombra } from '../theme';
 
@@ -26,11 +26,16 @@ export default function ExpedienteScreen({ route, navigation }) {
   const { id } = route.params;
   const [e, setE] = useState(null);
   const [error, setError] = useState(null);
+  const [tareas, setTareas] = useState(null);
 
   const cargar = useCallback(async () => {
     setError(null);
-    try { const r = await expedientes.detalle(id); setE(r.expediente); }
-    catch (x) { setError(x.message); }
+    try {
+      const r = await expedientes.detalle(id);
+      setE(r.expediente);
+      // Las tareas del expediente: que hay pendiente de este viaje.
+      gestion.deExpediente(id).then(setTareas).catch(() => setTareas(null));
+    } catch (x) { setError(x.message); }
   }, [id]);
 
   useEffect(() => navigation.addListener('focus', cargar), [navigation, cargar]);
@@ -188,6 +193,39 @@ export default function ExpedienteScreen({ route, navigation }) {
         </>
       ) : null}
 
+      {tareas && tareas.items && tareas.items.length ? (
+        <>
+          <Text style={s.seccion}>
+            TAREAS · {tareas.pendientes} {tareas.pendientes === 1 ? 'pendiente' : 'pendientes'}
+          </Text>
+          <Card>
+            {tareas.items.map((t, i) => (
+              <Pressable
+                key={t.id}
+                style={[s.tarea, i < tareas.items.length - 1 && s.borde]}
+                onPress={() => navigation.navigate('Tarea', { id: t.id })}
+              >
+                <MaterialIcons
+                  name={t.completada ? 'check-circle' : 'radio-button-unchecked'}
+                  size={19}
+                  color={t.completada ? C.ok : C.ink3}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.tareaT, t.completada && s.tareaHecha]} numberOfLines={2}>
+                    {t.titulo}
+                  </Text>
+                  {t.fecha_vencimiento && !t.completada ? (
+                    <Text style={s.tareaV}>
+                      vence {fechaLarga(t.fecha_vencimiento)}
+                    </Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            ))}
+          </Card>
+        </>
+      ) : null}
+
       <Text style={s.pie}>
         Para cargar pagos, pasajeros o servicios, entra desde el panel web.
       </Text>
@@ -234,6 +272,10 @@ const s = StyleSheet.create({
   servD: { fontSize: 14, color: C.ink },
   servP: { fontSize: 11.5, color: C.ink3, marginTop: 1 },
   servM: { fontSize: 13.5, fontWeight: '600', color: C.navy },
+  tarea: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 15, paddingVertical: 12 },
+  tareaT: { fontSize: 14, color: C.ink, lineHeight: 19 },
+  tareaHecha: { textDecorationLine: 'line-through', color: C.ink3 },
+  tareaV: { fontSize: 11.5, color: C.warn, marginTop: 2, fontWeight: '600' },
   aviso: { fontSize: 12.5, color: C.warn, marginTop: 8, paddingHorizontal: 4, fontWeight: '600' },
   pie: { fontSize: 12, color: C.ink3, textAlign: 'center', marginTop: 20, lineHeight: 17 },
 });

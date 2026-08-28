@@ -48,6 +48,7 @@ export default function CrmChatScreen({ route, navigation }) {
 
   const [conv, setConv] = useState(null);
   const ctx = usarPosicionToque();
+  const ultimoLargo = useRef(0);
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState(null);
   const [texto, setTexto] = useState(route.params?.textoInicial || '');
@@ -312,11 +313,16 @@ export default function CrmChatScreen({ route, navigation }) {
   const bloqueado = wa && !wa.abierta && !modoNota;
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: C.bg }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 92 : 0}
-    >
+    // El contenedor de afuera existe para colgar de el las capas que se
+    // superponen. Si el menu se monta DENTRO del KeyboardAvoidingView, ese
+    // recalcula el alto disponible, la lista cambia de tamano y pierde la
+    // posicion del scroll: por eso el chat saltaba al principio.
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 92 : 0}
+      >
       <View style={s.cabecera}>
         <Pressable onPress={cambiarEstado} style={[s.estado, { backgroundColor: estadoDe(conv.estado).bg }]}>
           <MaterialIcons name={estadoDe(conv.estado).icono} size={13} color={estadoDe(conv.estado).color} />
@@ -349,7 +355,15 @@ export default function CrmChatScreen({ route, navigation }) {
         data={mensajes}
         keyExtractor={(m) => String(m.id)}
         contentContainerStyle={{ padding: 14 }}
-        onContentSizeChange={() => lista.current && lista.current.scrollToEnd({ animated: false })}
+        // Solo baja al final cuando llegan mensajes nuevos, no cada vez que
+        // el contenido se recalcula: si no, cualquier cosa que cambie el alto
+        // -abrir un menu, el teclado- arrastra la lista.
+        onContentSizeChange={() => {
+          if (mensajes && mensajes.length !== ultimoLargo.current) {
+            ultimoLargo.current = mensajes.length;
+            lista.current && lista.current.scrollToEnd({ animated: false });
+          }
+        }}
         renderItem={({ item }) => {
           const nota = item.autor_tipo === 'nota' || item.direccion === 'nota';
           const mio = item.direccion === 'saliente';
@@ -578,16 +592,6 @@ export default function CrmChatScreen({ route, navigation }) {
         </View>
       </Hoja>
 
-      <MenuContextual
-        visible={!!ctx.menu}
-        x={ctx.menu && ctx.menu.x}
-        y={ctx.menu && ctx.menu.y}
-        titulo={ctx.menu && ctx.menu.titulo}
-        subtitulo={ctx.menu && ctx.menu.subtitulo}
-        opciones={ctx.menu && ctx.menu.opciones}
-        onCerrar={ctx.cerrar}
-      />
-
       <VisorImagen
         visible={!!viendo}
         uri={viendo && viendo.uri}
@@ -604,7 +608,18 @@ export default function CrmChatScreen({ route, navigation }) {
           catch (e) { Alert.alert('No se pudo guardar', e.message); }
         }}
       />
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+
+      <MenuContextual
+        visible={!!ctx.menu}
+        x={ctx.menu && ctx.menu.x}
+        y={ctx.menu && ctx.menu.y}
+        titulo={ctx.menu && ctx.menu.titulo}
+        subtitulo={ctx.menu && ctx.menu.subtitulo}
+        opciones={ctx.menu && ctx.menu.opciones}
+        onCerrar={ctx.cerrar}
+      />
+    </View>
   );
 }
 
