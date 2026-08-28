@@ -279,8 +279,9 @@ export default function CrmScreen({ navigation }) {
 
       <Modal visible={verVendedores} animationType="slide" transparent
         onRequestClose={() => setVerVendedores(false)}>
-        <Pressable style={s.fondo} onPress={() => setVerVendedores(false)} />
-        <View style={s.hoja}>
+        <View style={s.modalWrap}>
+          <Pressable style={s.fondo} onPress={() => setVerVendedores(false)} />
+          <View style={s.hoja}>
           <View style={s.hojaTop}>
             <Text style={s.hojaTit}>Ver conversaciones de</Text>
             <Pressable onPress={() => setVerVendedores(false)} hitSlop={10}>
@@ -311,6 +312,7 @@ export default function CrmScreen({ navigation }) {
               );
             })}
           </ScrollView>
+          </View>
         </View>
       </Modal>
     </View>
@@ -324,6 +326,7 @@ const s = StyleSheet.create({
     paddingVertical: 8, marginTop: 14, marginHorizontal: 14, maxWidth: '92%',
   },
   filtroVendTxt: { fontSize: 13, fontWeight: '700', color: C.tealDeep, flexShrink: 1 },
+  modalWrap: { flex: 1, justifyContent: 'flex-end' },
   fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.4)' },
   hoja: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%' },
   hojaTop: {

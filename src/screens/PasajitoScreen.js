@@ -326,8 +326,9 @@ export default function PasajitoScreen({ navigation }) {
 
       <Modal visible={verChats} animationType="slide" transparent
         onRequestClose={() => setVerChats(false)}>
-        <Pressable style={s.fondo} onPress={() => setVerChats(false)} />
-        <View style={s.hoja}>
+        <View style={s.modalWrap}>
+          <Pressable style={s.fondo} onPress={() => setVerChats(false)} />
+          <View style={s.hoja}>
           <View style={s.hojaTop}>
             <Text style={s.hojaTit}>Tus conversaciones</Text>
             <Pressable onPress={() => setVerChats(false)} hitSlop={10}>
@@ -359,6 +360,7 @@ export default function PasajitoScreen({ navigation }) {
             ))}
             <Text style={s.pieHoja}>Mantené apretada una para borrarla.</Text>
           </ScrollView>
+          </View>
         </View>
       </Modal>
     </KeyboardAvoidingView>
@@ -418,6 +420,7 @@ const s = StyleSheet.create({
     width: 42, height: 42, borderRadius: 21, backgroundColor: C.navy,
     alignItems: 'center', justifyContent: 'center',
   },
+  modalWrap: { flex: 1, justifyContent: 'flex-end' },
   fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.4)' },
   hoja: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '72%' },
   hojaTop: {

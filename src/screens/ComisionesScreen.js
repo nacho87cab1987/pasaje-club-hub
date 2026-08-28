@@ -259,15 +259,20 @@ export default function ComisionesScreen({ navigation }) {
 function Hoja({ visible, onCerrar, titulo, children }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCerrar}>
-      <Pressable style={s.fondo} onPress={onCerrar} />
-      <View style={s.hoja}>
+      {/* El contenedor con flex-end es lo que pega la hoja al borde de
+          abajo. Sin el, la hoja se acomoda despues del fondo y queda
+          empujada fuera de la pantalla. */}
+      <View style={s.modalWrap}>
+        <Pressable style={s.fondo} onPress={onCerrar} />
+        <View style={s.hoja}>
         <View style={s.hojaTop}>
           <Text style={s.hojaTit}>{titulo}</Text>
           <Pressable onPress={onCerrar} hitSlop={10}>
             <MaterialIcons name="close" size={22} color={C.ink3} />
           </Pressable>
         </View>
-        <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>{children}</ScrollView>
+          <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>{children}</ScrollView>
+        </View>
       </View>
     </Modal>
   );
@@ -328,6 +333,7 @@ const s = StyleSheet.create({
   monto: { fontSize: 15.5, fontWeight: '700', color: C.navy },
   estado: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3, marginTop: 5 },
   estadoTxt: { fontSize: 9.5, fontWeight: '700' },
+  modalWrap: { flex: 1, justifyContent: 'flex-end' },
   fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.4)' },
   hoja: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '76%' },
   hojaTop: {

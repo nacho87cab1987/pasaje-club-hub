@@ -109,8 +109,18 @@ export default function NotificacionesScreen({ navigation }) {
       setItems((xs) => xs.map((x) => (x.id === n.id ? { ...x, leida: 1 } : x)));
     }
     const [pantalla, params] = rutaAPantalla(n.ruta);
-    try { navigation.navigate(pantalla, params); }
-    catch { /* la ruta puede apuntar a algo que esta version no tiene */ }
+    try {
+      // Inicio y Apps son pestanas, no pantallas del stack: se llega por el
+      // navegador de abajo.
+      if (pantalla === 'Inicio' || pantalla === 'Apps') {
+        navigation.navigate('Tabs', { screen: pantalla, params });
+      } else {
+        navigation.navigate(pantalla, params);
+      }
+    } catch (e) {
+      // La ruta puede apuntar a una pantalla que esta version no tiene.
+      Alert.alert('No pude abrirlo', 'Buscalo desde el modulo correspondiente.');
+    }
   };
 
   if (error) return <ErrorBox mensaje={error} onReintentar={cargar} />;

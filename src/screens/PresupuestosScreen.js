@@ -6,6 +6,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { presupuestos } from '../api/client';
 import { Cargando, ErrorBox, Vacio, Tag } from '../components/UI';
+import MenuContextual, { usarPosicionToque } from '../MenuContextual';
 import { C, R, sombra } from '../theme';
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun',
@@ -35,6 +36,7 @@ export default function PresupuestosScreen({ navigation, route }) {
   const [scope, setScope] = useState('mios');
   const [veTodo, setVeTodo] = useState(false);
   const [refrescando, setRefrescando] = useState(false);
+  const ctx = usarPosicionToque();
 
   const cargar = useCallback(async (busqueda) => {
     setError(null);
@@ -90,16 +92,22 @@ export default function PresupuestosScreen({ navigation, route }) {
   };
 
   const menu = (p) => {
-    const opciones = [
-      { text: 'Compartir link', onPress: () => compartir(p) },
-      { text: 'Abrir en el navegador', onPress: async () => {
-          try { await Linking.openURL(await obtenerLink(p)); }
-          catch (e) { Alert.alert('No se pudo abrir', e.message); }
-        } },
-      { text: 'Duplicar', onPress: () => duplicar(p) },
-      { text: 'Cancelar', style: 'cancel' },
-    ];
-    Alert.alert(p.destino || 'Presupuesto', p.cliente_nombre || '', opciones);
+    ctx.abrir({
+      titulo: p.destino || 'Presupuesto',
+      subtitulo: [p.cliente_nombre, p.codigo].filter(Boolean).join(' · ') || null,
+      opciones: [
+        { texto: 'Compartir link', icono: 'ios-share', onPress: () => compartir(p) },
+        {
+          texto: 'Abrir en el navegador',
+          icono: 'open-in-new',
+          onPress: async () => {
+            try { await Linking.openURL(await obtenerLink(p)); }
+            catch (e) { Alert.alert('No se pudo abrir', e.message); }
+          },
+        },
+        { texto: 'Duplicar', icono: 'content-copy', onPress: () => duplicar(p) },
+      ],
+    });
   };
 
   const duplicar = async (p) => {
@@ -163,6 +171,7 @@ export default function PresupuestosScreen({ navigation, route }) {
           <Pressable
             style={[s.item, sombra]}
             onPress={() => (paraEnviar ? enviarAlChat(item) : menu(item))}
+            onPressIn={ctx.alTocar}
           >
             <View style={{ flex: 1, minWidth: 0 }}>
               <View style={s.linea}>
@@ -222,6 +231,16 @@ export default function PresupuestosScreen({ navigation, route }) {
             compartís y duplicás.
           </Text>
         ) : null}
+      />
+
+      <MenuContextual
+        visible={!!ctx.menu}
+        x={ctx.menu && ctx.menu.x}
+        y={ctx.menu && ctx.menu.y}
+        titulo={ctx.menu && ctx.menu.titulo}
+        subtitulo={ctx.menu && ctx.menu.subtitulo}
+        opciones={ctx.menu && ctx.menu.opciones}
+        onCerrar={ctx.cerrar}
       />
     </View>
   );

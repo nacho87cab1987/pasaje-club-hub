@@ -312,8 +312,9 @@ export default function EditarPersonaScreen({ route, navigation }) {
 
       <Modal visible={!!texto} animationType="slide" transparent
         onRequestClose={() => setTexto(null)}>
-        <Pressable style={s.fondo} onPress={() => setTexto(null)} />
-        <View style={s.hoja}>
+        <View style={s.modalWrap}>
+          <Pressable style={s.fondo} onPress={() => setTexto(null)} />
+          <View style={s.hoja}>
           <View style={s.hojaTop}>
             <Text style={s.hojaTit}>{texto?.titulo}</Text>
             <Pressable onPress={() => setTexto(null)} hitSlop={10}>
@@ -338,6 +339,7 @@ export default function EditarPersonaScreen({ route, navigation }) {
               <Text style={s.guardarTxt}>Guardar</Text>
             </Pressable>
           </View>
+          </View>
         </View>
       </Modal>
 
@@ -347,8 +349,9 @@ export default function EditarPersonaScreen({ route, navigation }) {
         transparent
         onRequestClose={() => setEligiendo(null)}
       >
-        <Pressable style={s.fondo} onPress={() => setEligiendo(null)} />
-        <View style={s.hoja}>
+        <View style={s.modalWrap}>
+          <Pressable style={s.fondo} onPress={() => setEligiendo(null)} />
+          <View style={s.hoja}>
           <View style={s.hojaTop}>
             <Text style={s.hojaTit}>{eligiendo?.titulo}</Text>
             <Pressable onPress={() => setEligiendo(null)} hitSlop={10}>
@@ -394,6 +397,7 @@ export default function EditarPersonaScreen({ route, navigation }) {
                 );
               })}
           </ScrollView>
+          </View>
         </View>
       </Modal>
     </ScrollView>
@@ -429,6 +433,7 @@ const s = StyleSheet.create({
     alignItems: 'center', marginTop: 18,
   },
   guardarTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  modalWrap: { flex: 1, justifyContent: 'flex-end' },
   fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.4)' },
   hoja: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '78%' },
   hojaTop: {

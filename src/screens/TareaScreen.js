@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { gestion } from '../api/client';
+import MenuContextual, { usarPosicionToque, vibrar } from '../MenuContextual';
 import { Card, Avatar, Cargando, ErrorBox, Tag } from '../components/UI';
 import { C, R, iniciales } from '../theme';
 
@@ -28,6 +29,7 @@ function cuando(iso) {
 export default function TareaScreen({ route, navigation }) {
   const { id } = route.params;
   const [data, setData] = useState(null);
+  const ctx = usarPosicionToque();
   const [error, setError] = useState(null);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -41,25 +43,43 @@ export default function TareaScreen({ route, navigation }) {
 
   useEffect(() => navigation.addListener('focus', cargar), [navigation, cargar]);
   const menu = () => {
-    Alert.alert('Tarea', null, [
-      { text: 'Editar', onPress: () => navigation.navigate('TareaForm', { tarea: data.tarea }) },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: () => Alert.alert('Eliminar tarea', 'Se borra tambien en gestion. No se puede deshacer.', [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Eliminar',
-            style: 'destructive',
-            onPress: async () => {
-              try { await gestion.eliminar(id); navigation.goBack(); }
-              catch (e) { Alert.alert('No se pudo', e.message); }
-            },
-          },
-        ]),
-      },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
+    const t = data.tarea;
+    ctx.abrir({
+      titulo: t.titulo,
+      subtitulo: t.lista || t.tablero || null,
+      opciones: [
+        {
+          texto: t.completada ? 'Marcar sin terminar' : 'Marcar terminada',
+          icono: t.completada ? 'radio-button-unchecked' : 'check-circle',
+          onPress: completar,
+        },
+        {
+          texto: 'Editar',
+          icono: 'edit',
+          onPress: () => navigation.navigate('TareaForm', { tarea: t }),
+        },
+        {
+          texto: 'Eliminar',
+          icono: 'delete-outline',
+          destructivo: true,
+          onPress: () => Alert.alert(
+            'Eliminar tarea',
+            'Se borra tambien en gestion. No se puede deshacer.',
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              {
+                text: 'Eliminar',
+                style: 'destructive',
+                onPress: async () => {
+                  try { await gestion.eliminar(id); navigation.goBack(); }
+                  catch (e) { Alert.alert('No se pudo', e.message); }
+                },
+              },
+            ],
+          ),
+        },
+      ],
+    });
   };
 
   useEffect(() => {
@@ -67,7 +87,7 @@ export default function TareaScreen({ route, navigation }) {
     navigation.setOptions({
       title: data.tarea.espacio || 'Tarea',
       headerRight: () => (
-        <Pressable onPress={menu} hitSlop={10}>
+        <Pressable onPress={menu} onPressIn={ctx.alTocar} hitSlop={10}>
           <MaterialIcons name="more-vert" size={22} color={C.navy} />
         </Pressable>
       ),
@@ -234,6 +254,16 @@ export default function TareaScreen({ route, navigation }) {
                     : <MaterialIcons name="send" size={19} color="#fff" />}
         </Pressable>
       </View>
+
+      <MenuContextual
+        visible={!!ctx.menu}
+        x={ctx.menu && ctx.menu.x}
+        y={ctx.menu && ctx.menu.y}
+        titulo={ctx.menu && ctx.menu.titulo}
+        subtitulo={ctx.menu && ctx.menu.subtitulo}
+        opciones={ctx.menu && ctx.menu.opciones}
+        onCerrar={ctx.cerrar}
+      />
     </KeyboardAvoidingView>
   );
 }

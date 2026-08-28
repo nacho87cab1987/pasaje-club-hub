@@ -147,8 +147,9 @@ export default function CatalogosScreen({ navigation }) {
 
       <Modal visible={!!editando} animationType="slide" transparent
         onRequestClose={() => setEditando(null)}>
-        <Pressable style={s.fondo} onPress={() => setEditando(null)} />
-        <View style={s.hoja}>
+        <View style={s.modalWrap}>
+          <Pressable style={s.fondo} onPress={() => setEditando(null)} />
+          <View style={s.hoja}>
           <View style={s.hojaTop}>
             <Text style={s.hojaTit}>
               {editando?.nuevo
@@ -216,6 +217,7 @@ export default function CatalogosScreen({ navigation }) {
               <Text style={s.guardarTxt}>Guardar</Text>
             </Pressable>
           </ScrollView>
+          </View>
         </View>
       </Modal>
     </View>
@@ -241,6 +243,7 @@ const s = StyleSheet.create({
   },
   nuevoTxt: { fontSize: 14, fontWeight: '700', color: C.tealDeep },
   pie: { fontSize: 12, color: C.ink3, textAlign: 'center', marginTop: 16, lineHeight: 17 },
+  modalWrap: { flex: 1, justifyContent: 'flex-end' },
   fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.4)' },
   hoja: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '82%' },
   hojaTop: {

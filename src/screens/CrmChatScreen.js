@@ -613,8 +613,9 @@ export default function CrmChatScreen({ route, navigation }) {
 function Hoja({ visible, onCerrar, titulo, children }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCerrar}>
-      <Pressable style={s.fondo} onPress={onCerrar} />
-      <View style={s.hoja}>
+      <View style={s.modalWrap}>
+        <Pressable style={s.fondo} onPress={onCerrar} />
+        <View style={s.hoja}>
         <View style={s.hojaTop}>
           <Text style={s.hojaTit}>{titulo}</Text>
           <Pressable onPress={onCerrar} hitSlop={10}>
@@ -622,6 +623,7 @@ function Hoja({ visible, onCerrar, titulo, children }) {
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>{children}</ScrollView>
+        </View>
       </View>
     </Modal>
   );
@@ -722,6 +724,7 @@ const s = StyleSheet.create({
     position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: 10,
     backgroundColor: 'rgba(7,45,64,0.82)', alignItems: 'center', justifyContent: 'center',
   },
+  modalWrap: { flex: 1, justifyContent: 'flex-end' },
   fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.4)' },
   hoja: {
     backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,

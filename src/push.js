@@ -123,14 +123,27 @@ export async function ponerBadge(n) {
  */
 export function rutaAPantalla(ruta) {
   const [, seccion, id] = (ruta || '').split('/');
+  const n = id ? Number(id) : null;
+
+  // Cada aviso lleva a la pantalla donde esta la cosa, no al modulo que la
+  // contiene: si te avisan de un comentario y caes en el inicio, tenes que
+  // buscarlo a mano y el aviso no sirvio de nada.
   switch (seccion) {
-    case 'post':     return ['Inicio', { postId: id }];
-    case 'persona':  return ['Personas', { personaId: id }];
-    case 'crm':      return ['CRM', { conversacionId: id }];
-    case 'tarea':    return ['Tarea', { id }];
-    case 'evento':   return ['Evento', { id }];
-    case 'documento':return ['Documentos', {}];
-    case 'modulo':   return ['Apps', { slug: id }];
-    default:         return ['Inicio', {}];
+    case 'post':           return ['Post', { id: n }];
+    case 'persona':        return ['Persona', { id: n }];
+    case 'crm':            return ['CrmChat', { id: n }];
+    case 'tarea':          return ['Tarea', { id: n }];
+    case 'evento':         return ['Evento', { id: n }];
+    case 'encuesta':       return ['Encuesta', { id: n }];
+    case 'expediente':     return ['Expediente', { id: n }];
+    case 'presupuesto':    return ['Presupuestos', {}];
+    case 'reconocimiento': return ['Reconocimientos', {}];
+    case 'documento':      return ['Documentos', {}];
+    case 'desempeno':      return ['Desempeno', {}];
+    case 'onboarding':     return ['Onboarding', {}];
+    case 'comision':       return ['Comisiones', {}];
+    case 'inicio':         return ['Inicio', {}];
+    case 'modulo':         return ['Apps', { slug: id }];
+    default:               return ['Inicio', {}];
   }
 }

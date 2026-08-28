@@ -162,8 +162,9 @@ export default function PersonaScreen({ route, navigation }) {
       ) : null}
 
       <Modal visible={eligiendo} animationType="slide" transparent onRequestClose={() => setEligiendo(false)}>
-        <Pressable style={s.fondo} onPress={() => setEligiendo(false)} />
-        <View style={s.hoja}>
+        <View style={s.modalWrap}>
+          <Pressable style={s.fondo} onPress={() => setEligiendo(false)} />
+          <View style={s.hoja}>
           <View style={s.hojaTop}>
             <Text style={s.hojaTit}>¿De quién depende?</Text>
             <Pressable onPress={() => setEligiendo(false)} hitSlop={10}>
@@ -204,6 +205,7 @@ export default function PersonaScreen({ route, navigation }) {
               </Pressable>
             ))}
           </ScrollView>
+          </View>
         </View>
       </Modal>
     </ScrollView>
@@ -233,6 +235,7 @@ const s = StyleSheet.create({
   cargo: { backgroundColor: C.tealSoft, borderRadius: 11, minWidth: 22, height: 22, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   cargoN: { fontSize: 11.5, fontWeight: '700', color: C.tealDeep },
   vacio: { fontSize: 13, color: C.ink3, lineHeight: 19, paddingHorizontal: 4 },
+  modalWrap: { flex: 1, justifyContent: 'flex-end' },
   fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.4)' },
   hoja: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '78%' },
   hojaTop: {
