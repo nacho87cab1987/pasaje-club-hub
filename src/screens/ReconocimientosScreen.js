@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, Pressable, RefreshControl,
+  View, Text, FlatList, StyleSheet, Pressable, RefreshControl, Alert, Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { reconocimientos } from '../api/client';
+import { reconocimientos, imagenUrl } from '../api/client';
+import MenuContextual, { usarPosicionToque } from '../MenuContextual';
+import VisorImagen from '../VisorImagen';
+import { abrirArchivo } from '../archivos';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
 import { C, R, sombra, iniciales } from '../theme';
 
@@ -25,6 +28,8 @@ export default function ReconocimientosScreen({ navigation }) {
   const [mios, setMios] = useState(null);
   const [error, setError] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
+  const [viendo, setViendo] = useState(null);
+  const ctx = usarPosicionToque();
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -50,6 +55,41 @@ export default function ReconocimientosScreen({ navigation }) {
       ),
     });
   }, [navigation]);
+
+  const menu = (r) => {
+    if (!r.puedo_editar) return;
+    ctx.abrir({
+      titulo: r.para.nombre,
+      subtitulo: r.valor ? r.valor.nombre : null,
+      opciones: [
+        {
+          texto: 'Editar',
+          icono: 'edit',
+          onPress: () => navigation.navigate('ReconocerForm', { reconocimiento: r }),
+        },
+        {
+          texto: 'Borrar',
+          icono: 'delete-outline',
+          destructivo: true,
+          onPress: () => Alert.alert(
+            'Borrar reconocimiento',
+            'También se borra la publicación del muro.',
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              {
+                text: 'Borrar',
+                style: 'destructive',
+                onPress: async () => {
+                  try { await reconocimientos.borrar(r.id); await cargar(); }
+                  catch (e) { Alert.alert('No se pudo', e.message); }
+                },
+              },
+            ],
+          ),
+        },
+      ],
+    });
+  };
 
   if (error) return <ErrorBox mensaje={error} onReintentar={cargar} />;
   if (!data) return <Cargando texto="Cargando" />;
@@ -105,6 +145,9 @@ export default function ReconocimientosScreen({ navigation }) {
             <Pressable
               style={[s.item, sombra, { borderLeftColor: color }]}
               onPress={() => item.post_id && navigation.navigate('Post', { id: item.post_id })}
+              onPressIn={ctx.alTocar}
+              onLongPress={() => menu(item)}
+              delayLongPress={330}
             >
               {item.valor ? (
                 <View style={[s.valor, { backgroundColor: `${color}1A` }]}>
@@ -127,6 +170,30 @@ export default function ReconocimientosScreen({ navigation }) {
 
               <Text style={s.mensaje}>{item.mensaje}</Text>
 
+              {item.media && item.media.length ? (
+                <View style={s.media}>
+                  {item.media.map((m, i) => (
+                    <Pressable
+                      key={`${m.url}-${i}`}
+                      onPress={() => (m.tipo === 'video'
+                        ? abrirArchivo(imagenUrl(m.url), m.nombre)
+                        : setViendo({ uri: imagenUrl(m.url), nombre: m.nombre }))}
+                    >
+                      {m.tipo === 'video' ? (
+                        <View style={[s.miniatura, s.mediaVideo]}>
+                          <MaterialIcons name="play-circle-filled" size={28} color="#fff" />
+                        </View>
+                      ) : (
+                        <Image
+                          source={{ uri: imagenUrl(m.miniatura || m.url) }}
+                          style={s.miniatura}
+                        />
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+
               {item.post_id ? (
                 <View style={s.verPost}>
                   <MaterialIcons name="forum" size={13} color={C.ink3} />
@@ -136,6 +203,23 @@ export default function ReconocimientosScreen({ navigation }) {
             </Pressable>
           );
         }}
+      />
+
+      <MenuContextual
+        visible={!!ctx.menu}
+        x={ctx.menu && ctx.menu.x}
+        y={ctx.menu && ctx.menu.y}
+        titulo={ctx.menu && ctx.menu.titulo}
+        subtitulo={ctx.menu && ctx.menu.subtitulo}
+        opciones={ctx.menu && ctx.menu.opciones}
+        onCerrar={ctx.cerrar}
+      />
+
+      <VisorImagen
+        visible={!!viendo}
+        uri={viendo && viendo.uri}
+        nombre={viendo && viendo.nombre}
+        onCerrar={() => setViendo(null)}
       />
     </View>
   );
@@ -163,6 +247,9 @@ const s = StyleSheet.create({
   para: { fontSize: 15, fontWeight: '700', color: C.ink },
   de: { fontSize: 11.5, color: C.ink3, marginTop: 1 },
   mensaje: { fontSize: 14, color: C.ink, lineHeight: 20, marginTop: 10 },
+  media: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 10 },
+  miniatura: { width: 84, height: 84, borderRadius: 9, backgroundColor: C.lineSoft },
+  mediaVideo: { backgroundColor: C.navy, alignItems: 'center', justifyContent: 'center' },
   verPost: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 },
   verPostTxt: { fontSize: 11.5, color: C.ink3 },
 });

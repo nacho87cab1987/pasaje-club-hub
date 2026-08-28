@@ -17,7 +17,7 @@ import { subirArchivo } from './subir';
  * pero subir 12 MB de una foto de iPhone por datos moviles es una espera
  * innecesaria.
  */
-export async function elegirImagenes({ camara = false, maximo = 4 } = {}) {
+export async function elegirImagenes({ camara = false, maximo = 4, conVideo = false } = {}) {
   const permiso = camara
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -31,9 +31,12 @@ export async function elegirImagenes({ camara = false, maximo = 4 } = {}) {
   }
 
   const opciones = {
-    mediaTypes: ['images'],
+    mediaTypes: conVideo ? ['images', 'videos'] : ['images'],
     quality: 0.75,
     exif: false,          // no mandamos ubicacion ni datos del dispositivo
+    // Un minuto es suficiente para un saludo o un brindis, y evita videos
+    // de 200 MB que no van a llegar a subir.
+    ...(conVideo ? { videoMaxDuration: 60 } : {}),
   };
 
   const r = camara
@@ -54,6 +57,21 @@ export async function elegirImagenes({ camara = false, maximo = 4 } = {}) {
  */
 export async function subirImagen(asset, destino = 'muro', alProgresar) {
   if (alProgresar) alProgresar(0);
+
+  // El picker marca los videos; van por otra accion porque no se
+  // redimensionan ni se les genera miniatura.
+  const esVideo = asset.type === 'video'
+    || /\.(mp4|mov|m4v|webm)$/i.test(asset.fileName || asset.uri || '');
+
+  if (esVideo) {
+    const r = await subirArchivo(asset, {
+      url: 'hub_subir.php',
+      campo: 'archivo',
+      params: { action: 'video' },
+    });
+    if (alProgresar) alProgresar(1);
+    return { ...r, tipo: 'video' };
+  }
 
   // La subida va por el helper: RN 0.86 rechaza el FormData con { uri }.
   const data = await subirArchivo(asset, {

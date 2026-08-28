@@ -4,7 +4,8 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { reconocimientos, organigrama } from '../api/client';
+import { reconocimientos, organigrama, imagenUrl } from '../api/client';
+import { elegirImagenes, subirImagen } from '../imagenes';
 import { vibrar } from '../MenuContextual';
 import { Avatar, Cargando, ErrorBox } from '../components/UI';
 import { C, R, sombra, iniciales } from '../theme';
@@ -19,6 +20,11 @@ export default function ReconocerFormScreen({ navigation, route }) {
   const [mensaje, setMensaje] = useState('');
   const [buscando, setBuscando] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [media, setMedia] = useState([]);
+  const [subiendo, setSubiendo] = useState(false);
+
+  // Edicion: si llega un reconocimiento, se carga en el formulario.
+  const editando = route.params?.reconocimiento || null;
 
   const cargar = useCallback(async () => {
     try {
@@ -36,6 +42,48 @@ export default function ReconocerFormScreen({ navigation, route }) {
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  useEffect(() => {
+    if (!editando) return;
+    navigation.setOptions({ title: 'Editar reconocimiento' });
+    setPara(editando.para);
+    setMensaje(editando.mensaje || '');
+    setMedia((editando.media || []).map((m) => ({ ...m })));
+  }, [editando, navigation]);
+
+  // El valor se resuelve cuando llega el catalogo.
+  useEffect(() => {
+    if (editando && editando.valor && valores.length) {
+      setValor(valores.find((v) => v.slug === editando.valor.slug) || null);
+    }
+  }, [editando, valores]);
+
+  const agregarMedia = async (camara) => {
+    const assets = await elegirImagenes({
+      camara, maximo: 4 - media.length, conVideo: true,
+    });
+    if (!assets.length) return;
+
+    setSubiendo(true);
+    try {
+      for (const a of assets) {
+        const r = await subirImagen(a, 'muro');
+        setMedia((m) => [...m, {
+          tipo: r.tipo || 'imagen',
+          url: r.url,
+          miniatura: r.miniatura || null,
+          nombre: r.nombre || a.fileName,
+          peso_kb: r.peso_kb,
+          // Para la vista previa se usa la ruta local hasta que se recarga.
+          previa: a.uri,
+        }]);
+      }
+    } catch (e) {
+      Alert.alert('No se pudo subir', e.message);
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
   const enviar = async () => {
     if (!para) { Alert.alert('Falta', 'Elegí a quién querés reconocer.'); return; }
     if (mensaje.trim().length < 10) {
@@ -45,11 +93,21 @@ export default function ReconocerFormScreen({ navigation, route }) {
     }
     setEnviando(true);
     try {
-      await reconocimientos.crear({
+      const datos = {
         para_id: para.id,
         valor_id: valor?.id || null,
         mensaje: mensaje.trim(),
-      });
+        media: media.map(({ previa, ...m }) => m),
+      };
+
+      if (editando) {
+        await reconocimientos.editar({ id: editando.id, ...datos });
+        vibrar(true);
+        navigation.goBack();
+        return;
+      }
+
+      await reconocimientos.crear(datos);
       vibrar(true);
       Alert.alert(
         'Listo',
@@ -137,6 +195,51 @@ export default function ReconocerFormScreen({ navigation, route }) {
               );
             })}
 
+            <Text style={s.paso}>FOTOS O VIDEO</Text>
+            <View style={s.mediaFila}>
+              {media.map((m, i) => (
+                <View key={`${m.url}-${i}`} style={s.mediaItem}>
+                  {m.tipo === 'video' ? (
+                    <View style={[s.mediaImg, s.mediaVideo]}>
+                      <MaterialIcons name="play-circle-outline" size={26} color="#fff" />
+                    </View>
+                  ) : (
+                    <Image
+                      source={{ uri: m.previa || imagenUrl(m.url) }}
+                      style={s.mediaImg}
+                    />
+                  )}
+                  <Pressable
+                    style={s.mediaQuitar}
+                    onPress={() => setMedia(media.filter((_, j) => j !== i))}
+                  >
+                    <MaterialIcons name="close" size={13} color="#fff" />
+                  </Pressable>
+                </View>
+              ))}
+
+              {media.length < 4 ? (
+                <Pressable
+                  style={s.mediaAgregar}
+                  onPress={() => Alert.alert('Agregar', null, [
+                    { text: 'Elegir de la galería', onPress: () => agregarMedia(false) },
+                    { text: 'Sacar una foto', onPress: () => agregarMedia(true) },
+                    { text: 'Cancelar', style: 'cancel' },
+                  ])}
+                  disabled={subiendo}
+                >
+                  {subiendo ? (
+                    <ActivityIndicator size="small" color={C.tealDeep} />
+                  ) : (
+                    <>
+                      <MaterialIcons name="add-a-photo" size={20} color={C.tealDeep} />
+                      <Text style={s.mediaAgregarTxt}>Agregar</Text>
+                    </>
+                  )}
+                </Pressable>
+              ) : null}
+            </View>
+
             <Text style={s.paso}>¿QUÉ HIZO?</Text>
             <TextInput
               style={[s.mensaje, sombra]}
@@ -157,8 +260,10 @@ export default function ReconocerFormScreen({ navigation, route }) {
               onPress={enviar}
               disabled={mensaje.trim().length < 10 || enviando}
             >
-              <MaterialIcons name="emoji-events" size={19} color="#fff" />
-              <Text style={s.enviarTxt}>Publicar reconocimiento</Text>
+              <MaterialIcons name={editando ? 'check' : 'emoji-events'} size={19} color="#fff" />
+              <Text style={s.enviarTxt}>
+                {editando ? 'Guardar cambios' : 'Publicar reconocimiento'}
+              </Text>
             </Pressable>
 
             <Text style={s.pie}>
@@ -195,6 +300,19 @@ const s = StyleSheet.create({
   valorN: { fontSize: 14.5, fontWeight: '700', color: C.ink },
   valorD: { fontSize: 12, color: C.ink3, marginTop: 2, lineHeight: 16 },
   valorE: { fontSize: 11.5, marginTop: 6, fontStyle: 'italic', lineHeight: 16 },
+  mediaFila: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  mediaItem: { width: 76, height: 76 },
+  mediaImg: { width: 76, height: 76, borderRadius: 10, backgroundColor: C.lineSoft },
+  mediaVideo: { backgroundColor: C.navy, alignItems: 'center', justifyContent: 'center' },
+  mediaQuitar: {
+    position: 'absolute', right: -5, top: -5, width: 21, height: 21, borderRadius: 11,
+    backgroundColor: C.bordo, alignItems: 'center', justifyContent: 'center',
+  },
+  mediaAgregar: {
+    width: 76, height: 76, borderRadius: 10, borderWidth: 1.5, borderColor: C.line,
+    borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 3,
+  },
+  mediaAgregarTxt: { fontSize: 10.5, color: C.tealDeep, fontWeight: '600' },
   mensaje: {
     backgroundColor: '#fff', borderRadius: R.md, padding: 13, fontSize: 15,
     color: C.ink, minHeight: 110, textAlignVertical: 'top', lineHeight: 21,

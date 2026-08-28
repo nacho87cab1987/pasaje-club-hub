@@ -279,6 +279,8 @@ export const reconocimientos = {
   valores: ()      => api.get('hub_reconocimientos.php', 'valores'),
   resumen: ()      => api.get('hub_reconocimientos.php', 'resumen'),
   crear:   (datos) => api.post('hub_reconocimientos.php', 'crear', datos),
+  editar:  (datos) => api.post('hub_reconocimientos.php', 'editar', datos),
+  borrar:  (id)    => api.post('hub_reconocimientos.php', 'borrar', { id }),
 };
 
 export const desempeno = {
