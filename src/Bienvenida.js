@@ -19,7 +19,10 @@ import { C } from './theme';
 // ============================================================================
 const ANIMACION = 'trazo';
 
-const PROPORCION = 528 / 300;
+// Alto maximo del logo. Se usa junto con resizeMode 'contain' en vez de
+// forzar una proporcion: asi la imagen entra en la caja sea cual sea su
+// forma, y no hay que saber sus medidas de antemano.
+const ALTO = 84;
 
 export default function Bienvenida({ onTerminar }) {
   const v = {
@@ -96,7 +99,7 @@ export default function Bienvenida({ onTerminar }) {
 
   // Mas contenido que antes: a 230 ocupaba mas de la mitad del ancho y
   // quedaba pesado.
-  const ancho = Math.min(170, Dimensions.get('window').width * 0.44);
+  const ancho = Math.min(150, Dimensions.get('window').width * 0.4);
 
   const desplazamiento = v.subir.interpolate({
     inputRange: [0, 1], outputRange: [26, 0],
@@ -111,7 +114,7 @@ export default function Bienvenida({ onTerminar }) {
     <Animated.Image
       source={require('../assets/logo.png')}
       resizeMode="contain"
-      style={{ width: ancho, aspectRatio: PROPORCION }}
+      style={{ width: ancho, height: ALTO }}
     />
   );
 
@@ -148,7 +151,7 @@ const s = StyleSheet.create({
   // Del mismo color que el fondo: al correrse, va dejando ver el logo.
   tapa: {
     position: 'absolute',
-    top: -8, bottom: -8, left: -2, right: -2,
+    top: -6, bottom: -6, left: -3, right: -3,
     backgroundColor: C.navyLogo || C.navy,
   },
   capa: {
