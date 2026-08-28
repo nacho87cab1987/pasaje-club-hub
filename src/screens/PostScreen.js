@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, StyleSheet, Pressable, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { muro } from '../api/client';
+import { muro, imagenUrl } from '../api/client';
+import VisorImagen from '../VisorImagen';
+import { abrirArchivo } from '../archivos';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
 import { C, R, iniciales } from '../theme';
 
@@ -26,11 +28,14 @@ export default function PostScreen({ route }) {
   const [error, setError] = useState(null);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [post, setPost] = useState(null);
+  const [viendo, setViendo] = useState(null);
 
   const cargar = useCallback(async () => {
     setError(null);
     try {
       const r = await muro.post(id);
+      setPost(r.post || null);
       setItems(r.comentarios);
     } catch (e) {
       setError(e.message);
@@ -81,6 +86,57 @@ export default function PostScreen({ route }) {
         data={items}
         keyExtractor={(c) => String(c.id)}
         contentContainerStyle={{ padding: 14 }}
+        ListHeaderComponent={post ? (
+          <View style={s.post}>
+            <View style={s.postTop}>
+              <Avatar
+                persona={{ foto: post.autor_foto }}
+                texto={iniciales(...String(post.autor || '').split(' '))}
+                tam={38}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={s.autor}>{post.autor || 'Pasaje Club'}</Text>
+                <Text style={s.fecha}>{cuando(post.creado_el)}</Text>
+              </View>
+            </View>
+
+            {post.titulo ? <Text style={s.titulo}>{post.titulo}</Text> : null}
+            {post.cuerpo ? <Text style={s.cuerpo}>{post.cuerpo}</Text> : null}
+
+            {post.media && post.media.length ? (
+              <View style={s.media}>
+                {post.media.map((m2) => (
+                  <Pressable
+                    key={m2.id}
+                    style={post.media.length === 1 ? s.mediaSola : s.mediaChica}
+                    onPress={() => (m2.tipo === 'video'
+                      ? abrirArchivo(imagenUrl(m2.url), m2.nombre)
+                      : setViendo({ uri: imagenUrl(m2.url), nombre: m2.nombre }))}
+                  >
+                    <Image
+                      source={{ uri: imagenUrl(m2.miniatura || m2.url) }}
+                      style={s.mediaImg}
+                      resizeMode="cover"
+                    />
+                    {/* El video no tiene miniatura propia: se marca con el
+                        boton de reproducir sobre el fondo. */}
+                    {m2.tipo === 'video' ? (
+                      <View style={s.play}>
+                        <MaterialIcons name="play-circle-filled" size={40} color="#fff" />
+                      </View>
+                    ) : (
+                      <View style={s.lupa}>
+                        <MaterialIcons name="zoom-out-map" size={15} color="#fff" />
+                      </View>
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+
+            <Text style={s.seccion}>COMENTARIOS</Text>
+          </View>
+        ) : null}
         ListEmptyComponent={(
           <Vacio icono="chat-bubble-outline" titulo="Sin comentarios" texto="Sé el primero en responder." />
         )}
@@ -128,6 +184,29 @@ export default function PostScreen({ route }) {
 }
 
 const s = StyleSheet.create({
+  post: { paddingBottom: 6 },
+  postTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  autor: { fontSize: 14.5, fontWeight: '700', color: C.ink },
+  fecha: { fontSize: 11.5, color: C.ink3, marginTop: 1 },
+  titulo: { fontSize: 16, fontWeight: '700', color: C.ink, marginBottom: 6, lineHeight: 22 },
+  cuerpo: { fontSize: 15, color: C.ink, lineHeight: 22 },
+  media: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 12 },
+  mediaSola: { width: '100%', height: 220, borderRadius: R.md, overflow: 'hidden' },
+  mediaChica: { width: '48%', height: 130, borderRadius: R.md, overflow: 'hidden' },
+  mediaImg: { width: '100%', height: '100%', backgroundColor: C.lineSoft },
+  play: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(7,45,64,0.28)',
+  },
+  lupa: {
+    position: 'absolute', right: 8, bottom: 8, width: 26, height: 26, borderRadius: 13,
+    backgroundColor: 'rgba(7,45,64,0.55)', alignItems: 'center', justifyContent: 'center',
+  },
+  seccion: {
+    fontSize: 11.5, fontWeight: '700', letterSpacing: 1, color: C.ink3,
+    marginTop: 20, marginBottom: 4,
+  },
   com: { flexDirection: 'row', gap: 10, marginBottom: 13 },
   burbuja: { backgroundColor: '#fff', borderRadius: R.lg, paddingHorizontal: 13, paddingVertical: 10 },
   autor: { fontSize: 13, fontWeight: '700', color: C.ink, marginBottom: 3 },

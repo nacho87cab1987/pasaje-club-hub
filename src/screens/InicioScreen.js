@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { muro, perfil as perfilApi, imagenUrl, notificaciones } from '../api/client';
 import { ponerBadge } from '../push';
 import VisorImagen from '../VisorImagen';
+import { abrirArchivo } from '../archivos';
 import MenuContextual, { usarPosicionToque } from '../MenuContextual';
 import { useAuth } from '../context/AuthContext';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
@@ -225,7 +226,9 @@ export default function InicioScreen({ navigation }) {
             post={item}
             onReaccion={reaccionar}
             onAbrir={() => navigation.navigate('Post', { id: item.id })}
-            onAmpliar={(m) => setViendo({ uri: m.url, nombre: null })}
+            onAmpliar={(m) => (m.tipo === 'video'
+              ? abrirArchivo(imagenUrl(m.url), m.nombre)
+              : setViendo({ uri: imagenUrl(m.url), nombre: m.nombre }))}
             onMenu={tieneMenu(item) ? () => menu(item) : null}
             alTocarMenu={ctx.alTocar}
           />
@@ -408,10 +411,13 @@ function Galeria({ media, onAbrir, onAmpliar }) {
     const m = media[0];
     const prop = m.ancho && m.alto ? m.alto / m.ancho : 0.66;
     const alto = Math.min(ancho * prop, 420);
+    // Tocar la foto la amplia. Para entrar al post estan el resto de la
+    // tarjeta y el boton de comentar: ampliar es lo que uno intenta primero
+    // cuando ve una foto chica.
     return (
       <Pressable
-        onPress={onAbrir}
-        onLongPress={() => onAmpliar && onAmpliar(m)}
+        onPress={() => (onAmpliar ? onAmpliar(m) : onAbrir())}
+        onLongPress={onAbrir}
         style={{ marginTop: 11 }}
       >
         <Foto uri={imagenUrl(m.url)} style={[s.foto, { width: ancho, height: alto }]} />
@@ -423,7 +429,11 @@ function Galeria({ media, onAbrir, onAmpliar }) {
   return (
     <View style={s.grilla}>
       {media.slice(0, 4).map((m, i) => (
-        <Pressable key={m.url} onPress={onAbrir} onLongPress={() => onAmpliar && onAmpliar(m)}>
+        <Pressable
+          key={m.url}
+          onPress={() => (onAmpliar ? onAmpliar(m) : onAbrir())}
+          onLongPress={onAbrir}
+        >
           <Foto uri={imagenUrl(m.miniatura_url || m.url)} style={[s.foto, { width: lado, height: lado }]} />
           {i === 3 && media.length > 4 ? (
             <View style={[s.mas, { width: lado, height: lado }]}>

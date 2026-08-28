@@ -352,6 +352,12 @@ export default function CrmChatScreen({ route, navigation }) {
 
       <FlatList
         ref={lista}
+        // Ancla la lista al contenido que se esta viendo. Cuando algo cambia
+        // el alto -un menu, el teclado, una imagen que termina de cargar- la
+        // lista se reacomoda alrededor del mensaje visible en vez de volver
+        // al principio. Es la propiedad que React Native trae justamente
+        // para esto y evita seguir tapando el sintoma.
+        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         data={mensajes}
         keyExtractor={(m) => String(m.id)}
         contentContainerStyle={{ padding: 14 }}
