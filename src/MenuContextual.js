@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
-  View, Text, Modal, Pressable, StyleSheet, Dimensions, Animated,
+  View, Text, Pressable, StyleSheet, Dimensions, Animated,
   Vibration, Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -109,8 +109,14 @@ export default function MenuContextual({ visible, x, y, titulo, subtitulo, opcio
     setTimeout(() => o.onPress && o.onPress(), 60);
   };
 
+  // Sin Modal a proposito.
+  //
+  // Un Modal obliga a la pantalla de abajo a recalcular su layout al abrirse,
+  // y una lista larga -como el chat- pierde la posicion del scroll y salta al
+  // principio. Como capa absoluta dentro de la misma pantalla, nada de lo que
+  // hay debajo se vuelve a medir.
   return (
-    <Modal visible transparent animationType="none" onRequestClose={onCerrar}>
+    <View style={s.contenedor} pointerEvents="box-none">
       <Pressable style={s.fondo} onPress={onCerrar}>
         <Animated.View style={{ opacity: opacidad, flex: 1 }} pointerEvents="box-none">
           <Animated.View
@@ -154,7 +160,7 @@ export default function MenuContextual({ visible, x, y, titulo, subtitulo, opcio
           </Animated.View>
         </Animated.View>
       </Pressable>
-    </Modal>
+    </View>
   );
 }
 
@@ -180,6 +186,10 @@ export function usarPosicionToque() {
 }
 
 const s = StyleSheet.create({
+  contenedor: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    zIndex: 900, elevation: 900,
+  },
   fondo: { flex: 1, backgroundColor: 'rgba(7,45,64,0.28)' },
   menu: {
     position: 'absolute', backgroundColor: '#fff', borderRadius: 14,

@@ -9,10 +9,8 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.pasajeclub.hub",
-      "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleDisplayName": "PC Hub"
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
