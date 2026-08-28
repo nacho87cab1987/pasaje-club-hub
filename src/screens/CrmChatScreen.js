@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, StyleSheet, Pressable, Alert,
   KeyboardAvoidingView, Platform, ActivityIndicator, Modal, ScrollView, Image,
@@ -48,7 +48,11 @@ export default function CrmChatScreen({ route, navigation }) {
 
   const [conv, setConv] = useState(null);
   const ctx = usarPosicionToque();
-  const ultimoLargo = useRef(0);
+  // Se invierte una sola vez por cambio de mensajes, no en cada dibujado.
+  const mensajesInvertidos = useMemo(
+    () => (mensajes ? [...mensajes].reverse() : []),
+    [mensajes],
+  );
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState(null);
   const [texto, setTexto] = useState(route.params?.textoInicial || '');
@@ -298,7 +302,8 @@ export default function CrmChatScreen({ route, navigation }) {
       setTexto('');
       setAdjuntos([]);
       await cargar();
-      setTimeout(() => lista.current && lista.current.scrollToEnd({ animated: true }), 250);
+      // Con la lista invertida, el final de la conversacion es el offset 0.
+      setTimeout(() => lista.current && lista.current.scrollToOffset({ offset: 0, animated: true }), 250);
     } catch (e) {
       Alert.alert('No se pudo enviar', e.message);
     } finally {
@@ -352,24 +357,19 @@ export default function CrmChatScreen({ route, navigation }) {
 
       <FlatList
         ref={lista}
-        // Ancla la lista al contenido que se esta viendo. Cuando algo cambia
-        // el alto -un menu, el teclado, una imagen que termina de cargar- la
-        // lista se reacomoda alrededor del mensaje visible en vez de volver
-        // al principio. Es la propiedad que React Native trae justamente
-        // para esto y evita seguir tapando el sintoma.
-        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-        data={mensajes}
+        // La lista va INVERTIDA, como cualquier chat.
+        //
+        // Asi el mensaje mas nuevo esta en la posicion 0 y el scroll arranca
+        // desde abajo. Deja de existir el problema de "saltar al principio":
+        // el principio de la lista ES el final de la conversacion.
+        //
+        // Antes se intento anclar la posicion y evitar los reajustes, pero
+        // eso peleaba contra el comportamiento normal de la lista cada vez
+        // que algo cambiaba el alto. Invertida, no hay nada que compensar.
+        inverted
+        data={mensajesInvertidos}
         keyExtractor={(m) => String(m.id)}
         contentContainerStyle={{ padding: 14 }}
-        // Solo baja al final cuando llegan mensajes nuevos, no cada vez que
-        // el contenido se recalcula: si no, cualquier cosa que cambie el alto
-        // -abrir un menu, el teclado- arrastra la lista.
-        onContentSizeChange={() => {
-          if (mensajes && mensajes.length !== ultimoLargo.current) {
-            ultimoLargo.current = mensajes.length;
-            lista.current && lista.current.scrollToEnd({ animated: false });
-          }
-        }}
         renderItem={({ item }) => {
           const nota = item.autor_tipo === 'nota' || item.direccion === 'nota';
           const mio = item.direccion === 'saliente';
