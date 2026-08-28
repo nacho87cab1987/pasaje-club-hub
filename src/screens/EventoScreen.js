@@ -68,8 +68,37 @@ export default function EventoScreen({ route, navigation }) {
     if (e.pasado && e.estado !== 'cancelado') {
       opciones.push({ text: 'Tomar asistencia', onPress: () => setTomandoAsistencia(true) });
     }
+    opciones.push({ text: 'Eliminar', style: 'destructive', onPress: eliminar });
     opciones.push({ text: 'Cerrar', style: 'cancel' });
     Alert.alert(e.titulo, null, opciones);
+  };
+
+  const eliminar = () => {
+    const e = data.evento;
+    const anotados = e.anotados || 0;
+    Alert.alert(
+      'Eliminar evento',
+      anotados > 0
+        ? `Hay ${anotados} ${anotados === 1 ? 'persona anotada' : 'personas anotadas'}. `
+          + 'Si el evento no se hace, es mejor cancelarlo: así les queda el aviso '
+          + 'y el registro. Eliminar lo borra todo.'
+        : 'Se borra el evento y no queda registro.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        ...(anotados > 0 && e.estado === 'publicado'
+          ? [{ text: 'Mejor cancelarlo', onPress: cancelar }] : []),
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await eventos.eliminar(id);
+              navigation.goBack();
+            } catch (x) { Alert.alert('No se pudo', x.message); }
+          },
+        },
+      ],
+    );
   };
 
   const publicar = async () => {

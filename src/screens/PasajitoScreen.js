@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, StyleSheet, Pressable, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Modal, ScrollView,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Modal, ScrollView, Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { pasajito } from '../api/client';
+import { pasajito, imagenUrl } from '../api/client';
+import { elegirImagenes } from '../imagenes';
+import { subirArchivo } from '../subir';
+import { useGrabador, hayAudio, segundos } from '../audio';
 import { Cargando, ErrorBox } from '../components/UI';
 import { C, R, sombra } from '../theme';
 
@@ -23,6 +26,9 @@ export default function PasajitoScreen({ navigation }) {
   const [chats, setChats] = useState([]);
   const [texto, setTexto] = useState('');
   const [pensando, setPensando] = useState(false);
+  const [adjuntos, setAdjuntos] = useState([]);
+  const [subiendo, setSubiendo] = useState(false);
+  const grabador = useGrabador();
   const [error, setError] = useState(null);
   const [verChats, setVerChats] = useState(false);
   const lista = useRef(null);
@@ -93,19 +99,72 @@ export default function PasajitoScreen({ navigation }) {
     ]);
   };
 
+  const adjuntar = async () => {
+    const assets = await elegirImagenes({ maximo: 3 });
+    if (!assets.length) return;
+    setSubiendo(true);
+    try {
+      for (const a of assets) {
+        const r = await subirArchivo(a, {
+          url: 'pasajito.php', campo: 'archivo', params: { action: 'subir' },
+        });
+        setAdjuntos((x) => [...x, { ...r, previa: a.uri }]);
+      }
+    } catch (e) {
+      Alert.alert('No se pudo subir', e.message);
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  // Grabar y preguntar de viva voz: el servidor transcribe el audio antes
+  // de pasarselo al modelo, asi la conversacion queda legible despues.
+  const conVoz = async () => {
+    if (grabador.grabando) {
+      const audio = await grabador.parar();
+      if (!audio) return;
+      setSubiendo(true);
+      try {
+        const r = await subirArchivo(
+          { uri: audio.uri, name: 'consulta.m4a', mimeType: 'audio/m4a' },
+          { url: 'pasajito.php', campo: 'archivo', params: { action: 'subir' } },
+        );
+        setAdjuntos((x) => [...x, { ...r, tipo: 'audio', duracion: audio.duracion }]);
+      } catch (e) {
+        Alert.alert('No se pudo subir el audio', e.message);
+      } finally {
+        setSubiendo(false);
+      }
+      return;
+    }
+
+    const r = await grabador.arrancar();
+    if (r === 'sin_permiso') {
+      Alert.alert('Sin acceso al microfono',
+        'Podes habilitarlo desde los ajustes del telefono.');
+    }
+  };
+
   const enviar = async (preguntaDirecta) => {
     const pregunta = (preguntaDirecta || texto).trim();
-    if (!pregunta || pensando || !chatId) return;
+    // Con un adjunto no hace falta escribir: la imagen ya es la pregunta.
+    if ((!pregunta && !adjuntos.length) || pensando || !chatId) return;
 
+    const envio = adjuntos;
+    setAdjuntos([]);
     setTexto('');
     // El mensaje propio aparece al instante: esperar la respuesta del modelo
     // para verlo hace sentir que no se envio.
-    setMensajes((m) => [...(m || []), { id: `tmp-${Date.now()}`, rol: 'user', contenido: pregunta }]);
+    setMensajes((m) => [...(m || []), {
+      id: `tmp-${Date.now()}`, rol: 'user',
+      contenido: pregunta || `[${envio.length} adjunto${envio.length > 1 ? 's' : ''}]`,
+      adjuntos: envio,
+    }]);
     setPensando(true);
     setTimeout(() => lista.current?.scrollToEnd({ animated: true }), 60);
 
     try {
-      const r = await pasajito.enviar(chatId, pregunta);
+      const r = await pasajito.enviar(chatId, pregunta, envio.map(({ previa, ...a }) => a));
       setMensajes((m) => [...m, {
         id: `r-${Date.now()}`, rol: 'assistant', contenido: r.respuesta,
       }]);
@@ -203,20 +262,63 @@ export default function PasajitoScreen({ navigation }) {
         ) : null}
       />
 
+      {adjuntos.length || subiendo ? (
+        <View style={s.adjBarra}>
+          {adjuntos.map((a, i) => (
+            <View key={`${a.url}-${i}`} style={s.adj}>
+              {a.tipo === 'imagen' ? (
+                <Image source={{ uri: a.previa || imagenUrl(a.url) }} style={s.adjImg} />
+              ) : (
+                <View style={[s.adjImg, s.adjDoc]}>
+                  <MaterialIcons
+                    name={a.tipo === 'audio' ? 'mic' : 'description'}
+                    size={18} color={C.tealDeep}
+                  />
+                </View>
+              )}
+              <Pressable
+                style={s.adjQuitar}
+                onPress={() => setAdjuntos(adjuntos.filter((_, j) => j !== i))}
+              >
+                <MaterialIcons name="close" size={12} color="#fff" />
+              </Pressable>
+            </View>
+          ))}
+          {subiendo ? <ActivityIndicator size="small" color={C.tealDeep} /> : null}
+        </View>
+      ) : null}
+
       <View style={s.barra}>
+        <Pressable onPress={adjuntar} hitSlop={8} style={s.clip} disabled={pensando}>
+          <MaterialIcons name="attach-file" size={22} color={C.ink3} />
+        </Pressable>
+
+        {hayAudio && !texto.trim() ? (
+          <Pressable onPress={conVoz} hitSlop={8} style={s.clip} disabled={pensando}>
+            <MaterialIcons
+              name={grabador.grabando ? 'stop-circle' : 'mic'}
+              size={22}
+              color={grabador.grabando ? C.bordo : C.ink3}
+            />
+          </Pressable>
+        ) : null}
+
         <TextInput
           style={s.input}
           value={texto}
           onChangeText={setTexto}
-          placeholder={vacio ? 'Preguntá lo que necesites' : 'Escribi tu consulta'}
+          placeholder={grabador.grabando
+            ? `Grabando ${segundos(grabador.seg)}`
+            : vacio ? 'Preguntá lo que necesites' : 'Escribi tu consulta'}
           placeholderTextColor={C.ink3}
           multiline
           editable={!pensando}
         />
         <Pressable
           onPress={() => enviar()}
-          disabled={!texto.trim() || pensando}
-          style={[s.enviar, (!texto.trim() || pensando) && { opacity: 0.4 }]}
+          disabled={(!texto.trim() && !adjuntos.length) || pensando}
+          style={[s.enviar,
+                  ((!texto.trim() && !adjuntos.length) || pensando) && { opacity: 0.4 }]}
         >
           <MaterialIcons name="arrow-upward" size={20} color="#fff" />
         </Pressable>
@@ -292,6 +394,18 @@ const s = StyleSheet.create({
   err: { backgroundColor: '#FCEBEB', borderBottomLeftRadius: 5 },
   txt: { fontSize: 14.5, lineHeight: 21, color: C.ink },
   pensando: { fontSize: 13, color: C.ink3, fontStyle: 'italic' },
+  adjBarra: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12,
+    paddingTop: 10, backgroundColor: '#fff',
+  },
+  adj: { width: 54, height: 54 },
+  adjImg: { width: 54, height: 54, borderRadius: 9, backgroundColor: C.lineSoft },
+  adjDoc: { alignItems: 'center', justifyContent: 'center' },
+  adjQuitar: {
+    position: 'absolute', right: -4, top: -4, width: 19, height: 19, borderRadius: 10,
+    backgroundColor: C.bordo, alignItems: 'center', justifyContent: 'center',
+  },
+  clip: { paddingBottom: 10 },
   barra: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 9, padding: 11,
     backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line,

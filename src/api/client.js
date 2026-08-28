@@ -255,8 +255,10 @@ export const pasajito = {
   eliminarChat: (chat_id)       => api.post('pasajito.php', 'eliminar_chat', { chat_id }),
   // La respuesta puede tardar: el modelo consulta conocimiento, catalogo y
   // precios antes de contestar.
-  enviar: (chat_id, mensaje) =>
-    api.post('pasajito.php', 'enviar', { chat_id, mensaje }, null, { timeout: 90000 }),
+  enviar: (chat_id, mensaje, adjuntos) =>
+    api.post('pasajito.php', 'enviar',
+             { chat_id, mensaje, adjuntos: adjuntos || [] },
+             null, { timeout: 120000 }),
 };
 
 export const eventos = {
@@ -270,6 +272,7 @@ export const eventos = {
   cancelar:   (evento_id, motivo) => api.post('hub_eventos.php', 'cancelar', { evento_id, motivo }),
   asistencia: (evento_id, asistencias) =>
     api.post('hub_eventos.php', 'asistencia', { evento_id, asistencias }),
+  eliminar: (evento_id) => api.post('hub_eventos.php', 'eliminar', { evento_id }),
 };
 
 export const reconocimientos = {
