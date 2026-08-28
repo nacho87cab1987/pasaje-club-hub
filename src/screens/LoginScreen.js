@@ -108,7 +108,7 @@ export default function LoginScreen() {
 const s = StyleSheet.create({
   wrap: { flexGrow: 1, justifyContent: 'center', padding: 28 },
   // El logo trae su proporcion: se fija el alto y el ancho se acomoda solo.
-  logo: { width: 210, height: 120, alignSelf: 'center', marginBottom: 22 },
+  logo: { width: 160, height: 90, alignSelf: 'center', marginBottom: 20 },
   sub: {
     fontSize: 14.5, color: '#A9CBD6', marginBottom: 26, lineHeight: 21,
     textAlign: 'center', paddingHorizontal: 10,
