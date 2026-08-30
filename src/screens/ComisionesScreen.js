@@ -10,7 +10,32 @@ import { C, R, sombra } from '../theme';
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio',
   'Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-const plata = (n) => `$ ${Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
+const plata = (n, moneda) => {
+  const simbolo = moneda === 'USD' ? 'US$' : '$';
+  // Los dolares se muestran con centavos: una comision de 147,50 no es lo
+  // mismo que 147, y en pesos ese detalle no cambia nada.
+  const dec = moneda === 'USD' ? 2 : 0;
+  return `${simbolo} ${Number(n || 0).toLocaleString('es-AR', {
+    minimumFractionDigits: dec, maximumFractionDigits: dec,
+  })}`;
+};
+
+/**
+ * El monto de una comision en la moneda elegida.
+ *
+ * Cuando la operacion se cerro en dolares se guarda el monto original y el
+ * tipo de cambio del dia. Mostrar solo la conversion a pesos esconde con
+ * cuanto se cerro realmente.
+ */
+function montoEn(c, verEn) {
+  if (verEn === 'USD') {
+    if (c.moneda === 'USD' && c.comision_orig != null) return c.comision_orig;
+    // Sin tipo de cambio no se puede convertir, y no conviene inventarlo.
+    if (c.tipo_cambio) return c.comision / c.tipo_cambio;
+    return null;
+  }
+  return c.comision;
+}
 
 function nombreMes(p) {
   if (!p) return '';
@@ -29,6 +54,7 @@ export default function ComisionesScreen({ navigation }) {
   const [resumen, setResumen] = useState(null);
   const [items, setItems] = useState(null);
   const [periodos, setPeriodos] = useState([]);
+  const [verEn, setVerEn] = useState('ARS');
   const [periodo, setPeriodo] = useState(null);
   const [error, setError] = useState(null);
   const [verPeriodos, setVerPeriodos] = useState(false);
@@ -36,6 +62,20 @@ export default function ComisionesScreen({ navigation }) {
   const [liquidaciones, setLiquidaciones] = useState([]);
   const [refrescando, setRefrescando] = useState(false);
   const [scope, setScope] = useState('mios');
+
+  // El total en dolares se suma de cada comision, no se convierte el total en
+  // pesos: cada operacion tuvo su propio tipo de cambio.
+  const totalUsd = () => {
+    if (!items.length) return plata(0, 'USD');
+    let suma = 0;
+    let faltan = 0;
+    items.forEach((c) => {
+      if (c.estado === 'anulada') return;
+      const v = montoEn(c, 'USD');
+      if (v === null) faltan += 1; else suma += v;
+    });
+    return plata(suma, 'USD') + (faltan ? ` +${faltan} sin cotización` : '');
+  };
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -108,7 +148,23 @@ export default function ComisionesScreen({ navigation }) {
               <Text style={s.grandeT}>
                 {scope === 'todos' ? 'Comisiones de la agencia' : 'Comision del mes'}
               </Text>
-              <Text style={s.grande}>{plata(resumen.del_periodo)}</Text>
+              <View style={s.monedas}>
+                {['ARS', 'USD'].map((m) => (
+                  <Pressable
+                    key={m}
+                    onPress={() => setVerEn(m)}
+                    style={[s.moneda, verEn === m && s.monedaOn]}
+                  >
+                    <Text style={[s.monedaTxt, verEn === m && { color: C.navy }]}>
+                      {m === 'ARS' ? 'Pesos' : 'Dólares'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={s.grande}>
+                {verEn === 'USD' ? totalUsd() : plata(resumen.del_periodo)}
+              </Text>
 
               {/* Separar lo propio del override es lo que hace que el numero
                   se entienda: no es lo mismo vender que cobrar por el equipo. */}
@@ -295,6 +351,15 @@ const s = StyleSheet.create({
   selectorTxt: { fontSize: 13.5, fontWeight: '700', color: C.tealDeep },
   tarjeta: { backgroundColor: C.navy, borderRadius: R.lg, padding: 18 },
   grandeT: { fontSize: 12, color: '#A9CBD6', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
+  monedas: {
+    flexDirection: 'row', gap: 4, alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 9, padding: 3,
+    marginBottom: 9,
+  },
+  moneda: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 7 },
+  monedaOn: { backgroundColor: C.teal },
+  monedaTxt: { fontSize: 11.5, fontWeight: '700', color: 'rgba(255,255,255,0.75)' },
+  origen: { fontSize: 10.5, color: C.ink3, marginTop: 2 },
   grande: { fontSize: 32, fontWeight: '700', color: '#fff', marginTop: 4, letterSpacing: -0.8 },
   desglose: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 10 },
   desItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
