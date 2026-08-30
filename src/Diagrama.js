@@ -6,6 +6,11 @@ import { C, R, iniciales } from './theme';
 
 const ANCHO = 208;
 
+// Las lineas del arbol. Mas gruesas y mas oscuras que el borde de las
+// tarjetas: son lo que explica quien depende de quien, no un separador.
+const GROSOR = 3;
+const LINEA = '#B9CBD4';
+
 function antiguedad(meses) {
   if (meses === null || meses === undefined) return null;
   if (meses < 1) return 'Recién entró';
@@ -359,11 +364,11 @@ const s = StyleSheet.create({
   enFila: { flexDirection: 'row', alignItems: 'stretch', marginBottom: 6 },
   espinaWrap: { width: 16, justifyContent: 'center' },
   espinaTramo: {
-    position: 'absolute', left: 0, top: -6, bottom: 0, width: 2,
-    backgroundColor: C.line,
+    position: 'absolute', left: 0, top: -6, bottom: 0, width: GROSOR,
+    backgroundColor: LINEA,
   },
   espinaCorta: { bottom: '50%' },
-  tick: { width: 14, height: 2, backgroundColor: C.line, marginLeft: 2 },
+  tick: { width: 14, height: GROSOR, backgroundColor: LINEA, marginLeft: 2 },
   compacta: {
     flexDirection: 'row', alignItems: 'center', gap: 9,
     width: ANCHO, backgroundColor: '#fff', borderRadius: 10,
@@ -373,14 +378,17 @@ const s = StyleSheet.create({
   puestoC: { fontSize: 10, color: C.ink3, marginTop: 1 },
 
   // El abanico: los hijos van lado a lado debajo del padre.
-  bajada: { width: 2, height: 20, backgroundColor: C.line },
+  bajada: { width: GROSOR, height: 22, backgroundColor: LINEA },
   filaHijos: { flexDirection: 'row', alignItems: 'flex-start' },
   hijo: { alignItems: 'center', paddingHorizontal: 9 },
-  conector: { height: 20, width: '100%', flexDirection: 'row' },
-  mitad: { flex: 1, height: 2, backgroundColor: C.line },
+  // alignSelf stretch y no width 100%: dentro de un contenedor que se ajusta
+  // al contenido, el porcentaje resuelve a cero y las lineas desaparecen.
+  // Con stretch toma el ancho real de la rama que tiene debajo.
+  conector: { height: 22, alignSelf: 'stretch', flexDirection: 'row' },
+  mitad: { flex: 1, height: GROSOR, backgroundColor: LINEA },
   invisible: { backgroundColor: 'transparent' },
   bajadaHijo: {
-    position: 'absolute', left: '50%', marginLeft: -1, top: 0,
-    width: 2, height: 20, backgroundColor: C.line,
+    position: 'absolute', left: '50%', marginLeft: -GROSOR / 2, top: 0,
+    width: GROSOR, height: 22, backgroundColor: LINEA,
   },
 });
