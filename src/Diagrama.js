@@ -9,6 +9,7 @@ const ANCHO = 208;
 // Las lineas del arbol. Mas gruesas y mas oscuras que el borde de las
 // tarjetas: son lo que explica quien depende de quien, no un separador.
 const GROSOR = 3;
+const SEPARACION = 9;
 const LINEA = '#B9CBD4';
 
 function antiguedad(meses) {
@@ -118,11 +119,17 @@ export default function Diagrama({ personas, yo, onTocar }) {
           contentContainerStyle={{ padding: 16, paddingBottom: 70 }}
         >
           {raices.length > 1 ? (
-            <View style={[s.direccion, { alignSelf: 'center' }]}>
-              {raices.map((p) => (
-                <Tarjeta key={p.id} persona={p} esYo={p.id === yo} onTocar={onTocar} />
-              ))}
-            </View>
+            <>
+              <View style={[s.direccion, { alignSelf: 'center' }]}>
+                {raices.map((p) => (
+                  <Tarjeta key={p.id} persona={p} esYo={p.id === yo} onTocar={onTocar} />
+                ))}
+              </View>
+              {/* La bajada desde el bloque hasta las areas. Sin esto el
+                  primer nivel queda suelto, sin nada que lo una a la
+                  direccion. */}
+              <View style={s.bajadaDireccion} />
+            </>
           ) : null}
 
           <View style={s.filaHijos}>
@@ -323,8 +330,11 @@ const s = StyleSheet.create({
 
   direccion: {
     borderWidth: 1.5, borderColor: C.navy, borderRadius: R.lg,
-    paddingHorizontal: 10, paddingTop: 8, paddingBottom: 12, marginBottom: 4,
+    paddingHorizontal: 10, paddingTop: 8, paddingBottom: 12,
     flexDirection: 'row', gap: 10,
+  },
+  bajadaDireccion: {
+    width: GROSOR, height: 22, backgroundColor: LINEA, alignSelf: 'center',
   },
   direccionTit: {
     fontSize: 9.5, fontWeight: '800', letterSpacing: 1.3, color: C.navy,
@@ -334,6 +344,8 @@ const s = StyleSheet.create({
   tarjeta: {
     width: ANCHO, backgroundColor: '#fff', borderRadius: 13,
     borderWidth: 1, borderColor: C.line, marginTop: 18,
+    // El avatar sobresale 16px: el margen de arriba lo compensa y evita que
+    // la tarjeta pise la linea que viene del conector.
     shadowColor: '#072D40', shadowOpacity: 0.07, shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
@@ -378,17 +390,29 @@ const s = StyleSheet.create({
   puestoC: { fontSize: 10, color: C.ink3, marginTop: 1 },
 
   // El abanico: los hijos van lado a lado debajo del padre.
+  // La bajada del padre y el conector de los hijos se tocan: juntos forman
+  // el tramo vertical completo. Si tuvieran alturas distintas o quedara un
+  // margen entre medio, se veria el corte.
   bajada: { width: GROSOR, height: 22, backgroundColor: LINEA },
   filaHijos: { flexDirection: 'row', alignItems: 'flex-start' },
-  hijo: { alignItems: 'center', paddingHorizontal: 9 },
+  hijo: { alignItems: 'center', paddingHorizontal: SEPARACION },
   // alignSelf stretch y no width 100%: dentro de un contenedor que se ajusta
   // al contenido, el porcentaje resuelve a cero y las lineas desaparecen.
   // Con stretch toma el ancho real de la rama que tiene debajo.
-  conector: { height: 22, alignSelf: 'stretch', flexDirection: 'row' },
+  // El margen negativo compensa el paddingHorizontal del contenedor: sin el,
+  // el conector termina donde empieza el espacio entre tarjetas y quedan
+  // cortes entre hermano y hermano.
+  conector: {
+    height: 22, alignSelf: 'stretch', flexDirection: 'row',
+    marginHorizontal: -SEPARACION,
+  },
   mitad: { flex: 1, height: GROSOR, backgroundColor: LINEA },
   invisible: { backgroundColor: 'transparent' },
+  // Baja 22px del conector MAS los 18 de margen de la tarjeta: asi la linea
+  // llega hasta la tarjeta en vez de cortarse antes. Ese hueco era el corte
+  // que se veia entre nivel y nivel.
   bajadaHijo: {
     position: 'absolute', left: '50%', marginLeft: -GROSOR / 2, top: 0,
-    width: GROSOR, height: 22, backgroundColor: LINEA,
+    width: GROSOR, height: 22 + 18, backgroundColor: LINEA,
   },
 });
