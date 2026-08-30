@@ -118,9 +118,11 @@ export default function OrganigramaScreen({ navigation }) {
         <Zoomable>
           <Diagrama personas={data.items} yo={data.yo} onTocar={abrir} />
         </Zoomable>
-        {raices.length > 1 ? (
+        {/* Solo se avisa si hay MAS de dos: Nacho y Agus estan arriba a
+            proposito, avisar por ellos seria ruido. */}
+        {raices.length > 2 ? (
           <Text style={s.pieDiagrama}>
-            {raices.length} personas sin jefe asignado. Tocá una para acomodarlo.
+            {raices.length - 2} personas sin jefe asignado. Tocá una para acomodarlo.
           </Text>
         ) : null}
       </View>

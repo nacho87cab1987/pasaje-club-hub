@@ -1,23 +1,29 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from './components/UI';
 import { C, R, iniciales } from './theme';
 
-const ANCHO_CAJA = 132;
-const SEPARACION = 14;   // entre hermanos
-const ALTO_RAMA  = 26;   // largo de las lineas verticales
+const ANCHO = 208;
+
+function antiguedad(meses) {
+  if (meses === null || meses === undefined) return null;
+  if (meses < 1) return 'Recién entró';
+  if (meses < 12) return `${meses} ${meses === 1 ? 'mes' : 'meses'}`;
+  const a = Math.floor(meses / 12);
+  return `${a} ${a === 1 ? 'año' : 'años'}`;
+}
 
 /**
- * Organigrama como diagrama, no como lista.
+ * El organigrama, creciendo hacia abajo y a la derecha.
  *
- * El arbol se arma con columnas anidadas en vez de posiciones absolutas: cada
- * nodo es [caja, linea, fila de hijos], y cada hijo repite la estructura. Asi
- * los anchos se acomodan solos cuando alguien tiene mucha gente a cargo, sin
- * tener que calcular coordenadas.
+ * Antes crecia a lo ancho: cada nivel abria en abanico y con quince personas
+ * habia que desplazarse de costado para ver un solo nivel. Asi cada rama baja
+ * en vertical y solo se corre a la derecha al entrar un nivel, que es como se
+ * lee una lista.
  *
- * Se desplaza en las dos direcciones porque un organigrama de verdad no entra
- * en una pantalla de telefono, y achicarlo hasta que entre lo vuelve ilegible.
+ * Cada persona con equipo se pliega tocando el numero. Arranca plegado a
+ * partir del tercer nivel: mostrar la empresa entera de una no deja ver nada.
  */
 export default function Diagrama({ personas, yo, onTocar }) {
   const porJefe = useMemo(() => {
@@ -31,318 +37,256 @@ export default function Diagrama({ personas, yo, onTocar }) {
 
   const raices = porJefe.raiz || [];
 
-  // Quienes cuelgan de cualquiera de las cabezas. Se juntan en una sola fila
-  // porque el equipo depende de la direccion, no de uno u otro director: si
-  // cada uno lleva su propia rama, el mismo nivel jerarquico queda dibujado
-  // a dos alturas distintas y no se entiende.
-  const hijosDeDireccion = [];
-  raices.forEach((r) => {
-    (porJefe[r.id] || []).forEach((h) => {
-      if (!hijosDeDireccion.some((x) => x.id === h.id)) {
-        // Se guarda de que director cuelga: al juntarlos en un bloque se
-        // perderia el dato, y con dos directores importa saberlo.
-        hijosDeDireccion.push({ ...h, _director: r.id });
-      }
+  const hijosDireccion = useMemo(() => {
+    const r = [];
+    raices.forEach((x) => {
+      (porJefe[x.id] || []).forEach((h) => {
+        if (!r.some((y) => y.id === h.id)) r.push(h);
+      });
     });
+    return r;
+  }, [porJefe, raices]);
+
+  const [plegados, setPlegados] = useState(() => {
+    // Arranca mostrando dos niveles: las jefaturas y su gente directa. De ahi
+    // para abajo viene plegado, porque desplegar la empresa entera de una no
+    // deja ver nada.
+    const cerrar = new Set();
+    const bajar = (id, nivel) => {
+      (porJefe[id] || []).forEach((h) => {
+        if (nivel >= 1 && (porJefe[h.id] || []).length) cerrar.add(h.id);
+        bajar(h.id, nivel + 1);
+      });
+    };
+    const arranque = (porJefe.raiz || []).length > 1
+      ? (porJefe.raiz || []).flatMap((r) => porJefe[r.id] || [])
+      : (porJefe.raiz || []);
+    arranque.forEach((h) => bajar(h.id, 1));
+    return cerrar;
   });
 
-  const colorDirector = {};
-  raices.forEach((r, i) => {
-    colorDirector[r.id] = r.area_color || (i === 0 ? C.tealDeep : '#790F35');
-  });
+  const [todoAbierto, setTodoAbierto] = useState(false);
 
-  const variasCabezas = raices.length > 1;
+  const alternar = (id) => {
+    setPlegados((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  const alternarTodo = () => {
+    if (todoAbierto) {
+      const conEquipo = (personas || [])
+        .filter((p) => (porJefe[p.id] || []).length)
+        .map((p) => p.id);
+      setPlegados(new Set(conEquipo));
+    } else {
+      setPlegados(new Set());
+    }
+    setTodoAbierto(!todoAbierto);
+  };
+
+  const arriba = raices.length > 1 ? hijosDireccion : raices;
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={s.scrollH}
-      // Sin esto, al achicar con dos dedos el diagrama se recorta al ancho
-      // original en vez de mostrar lo que ahora entra.
-      style={{ flex: 1 }}
-    >
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollV}>
-        {variasCabezas ? (
-          <View style={s.rama}>
-            {/* La direccion como un bloque, no como cajas sueltas. */}
-            <View style={s.bloque}>
-              <Text style={s.bloqueTit}>DIRECCIÓN</Text>
-              <View style={s.bloqueCajas}>
-                {raices.map((p) => (
-                  <View key={p.id} style={s.cabeza}>
-                    <Caja persona={p} esYo={p.id === yo} onTocar={onTocar} />
-                    <View style={[s.marcaDirector, { backgroundColor: colorDirector[p.id] }]} />
-                  </View>
-                ))}
-              </View>
-            </View>
+    <View style={{ flex: 1 }}>
+      <View style={s.acciones}>
+        <Pressable style={s.accion} onPress={alternarTodo}>
+          <MaterialIcons
+            name={todoAbierto ? 'unfold-less' : 'unfold-more'}
+            size={16}
+            color={C.tealDeep}
+          />
+          <Text style={s.accionTxt}>
+            {todoAbierto ? 'Contraer todo' : 'Expandir todo'}
+          </Text>
+        </Pressable>
+        <Text style={s.total}>
+          {(personas || []).filter((p) => !p.inactivo).length} personas
+        </Text>
+      </View>
 
-            {hijosDeDireccion.length ? (
-              <>
-                <View style={s.bajada} />
-                <View style={s.filaHijos}>
-                  {hijosDeDireccion.map((h, i) => (
-                    <View key={h.id} style={s.hijo}>
-                      <Conector
-                        primero={i === 0}
-                        ultimo={i === hijosDeDireccion.length - 1}
-                        unico={hijosDeDireccion.length === 1}
-                        color={colorDirector[h._director]}
-                      />
-                      <Rama persona={h} porJefe={porJefe} yo={yo} onTocar={onTocar} />
-                    </View>
-                  ))}
-                </View>
-              </>
-            ) : null}
-          </View>
-        ) : (
-          raices.map((p) => (
-            <Rama key={p.id} persona={p} porJefe={porJefe} yo={yo} onTocar={onTocar} />
-          ))
-        )}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 16, paddingBottom: 70 }}
+        >
+          {raices.length > 1 ? (
+            <View style={s.direccion}>
+              <Text style={s.direccionTit}>DIRECCIÓN</Text>
+              {raices.map((p) => (
+                <Tarjeta key={p.id} persona={p} esYo={p.id === yo} onTocar={onTocar} />
+              ))}
+            </View>
+          ) : null}
+
+          {arriba.map((p) => (
+            <Rama
+              key={p.id}
+              persona={p}
+              porJefe={porJefe}
+              yo={yo}
+              onTocar={onTocar}
+              plegados={plegados}
+              alternar={alternar}
+            />
+          ))}
+        </ScrollView>
       </ScrollView>
-    </ScrollView>
+    </View>
   );
 }
 
 
-function Rama({ persona, porJefe, yo, onTocar }) {
+function Rama({ persona, porJefe, yo, onTocar, plegados, alternar }) {
   const hijos = porJefe[persona.id] || [];
-
-  // Cuando alguien tiene varias personas a cargo y ninguna tiene equipo
-  // propio -el caso de una supervisora con sus vendedoras- se apilan hacia
-  // abajo en vez de abrirse a lo ancho.
-  //
-  // Un organigrama que crece a lo ancho obliga a desplazarse de costado para
-  // ver un solo nivel; creciendo hacia abajo se recorre como cualquier lista.
-  const todasHojas = hijos.every((h) => !(porJefe[h.id] || []).length);
-  const enColumna = hijos.length >= 3 && todasHojas;
-
-  if (enColumna) {
-    return (
-      <View style={s.rama}>
-        <Caja persona={persona} esYo={persona.id === yo} onTocar={onTocar} />
-        <View style={s.bajada} />
-
-        <View style={s.columna}>
-          {hijos.map((h, i) => (
-            <View key={h.id} style={s.enFila}>
-              {/* La vertical se dibuja por fila y no como una sola linea de
-                  fondo: asi no depende de que el contenedor tenga un alto
-                  ya calculado, que es lo que la hacia desaparecer. */}
-              <View style={s.espinaWrap}>
-                <View style={[s.espinaTramo, i === hijos.length - 1 && s.espinaCorta]} />
-                <View style={s.tick} />
-              </View>
-              <Caja persona={h} esYo={h.id === yo} onTocar={onTocar} compacta />
-            </View>
-          ))}
-        </View>
-      </View>
-    );
-  }
+  const plegado = plegados.has(persona.id);
 
   return (
-    <View style={s.rama}>
-      <Caja persona={persona} esYo={persona.id === yo} onTocar={onTocar} />
+    <View>
+      <Tarjeta
+        persona={persona}
+        esYo={persona.id === yo}
+        onTocar={onTocar}
+        hijos={hijos.length}
+        plegado={plegado}
+        onPlegar={hijos.length ? () => alternar(persona.id) : null}
+      />
 
-      {hijos.length ? (
-        <>
-          <View style={s.bajada} />
-          <View style={s.filaHijos}>
-            {hijos.map((h, i) => (
-              <View key={h.id} style={s.hijo}>
-                <Conector
-                  primero={i === 0}
-                  ultimo={i === hijos.length - 1}
-                  unico={hijos.length === 1}
-                />
-                <Rama persona={h} porJefe={porJefe} yo={yo} onTocar={onTocar} />
+      {hijos.length && !plegado ? (
+        <View style={s.hijos}>
+          {/* La vertical que agrupa a todo el equipo de esta persona. */}
+          <View style={s.guia} />
+          <View style={{ flex: 1 }}>
+            {hijos.map((h) => (
+              <View key={h.id} style={s.fila}>
+                <View style={s.brazo} />
+                <View>
+                  <Rama
+                    persona={h}
+                    porJefe={porJefe}
+                    yo={yo}
+                    onTocar={onTocar}
+                    plegados={plegados}
+                    alternar={alternar}
+                  />
+                </View>
               </View>
             ))}
           </View>
-        </>
+        </View>
       ) : null}
     </View>
   );
 }
 
 
-/**
- * El tramo de linea que une a un hijo con su padre.
- *
- * En vez de dibujar un travesano que abarque toda la fila -que obligaria a
- * medir el ancho de los hijos- cada hijo dibuja su propia mitad: la izquierda
- * salvo que sea el primero, la derecha salvo que sea el ultimo, y siempre la
- * bajada al centro. Las mitades de hermanos contiguos se tocan y forman la
- * linea completa.
- */
-function Conector({ primero, ultimo, unico, color }) {
-  const tinte = color ? { backgroundColor: color } : null;
-  return (
-    <View style={s.conector}>
-      {!unico ? (
-        <>
-          <View style={[s.mitad, tinte, primero && s.invisible]} />
-          <View style={[s.mitad, tinte, ultimo && s.invisible]} />
-        </>
-      ) : null}
-      <View style={[s.bajadaHijo, tinte]} />
-    </View>
-  );
-}
-
-
-function Caja({ persona, esYo, onTocar, compacta }) {
+function Tarjeta({ persona, esYo, onTocar, hijos = 0, plegado, onPlegar }) {
   const color = persona.area_color || C.tealDeep;
-  const aCargo = persona.a_cargo || 0;
+  const tiempo = antiguedad(persona.meses);
 
-  // Version en fila: ocupa menos alto y permite apilar muchas sin que el
-  // diagrama se vuelva larguisimo.
-  if (compacta) {
-    return (
-      <Pressable
-        style={[s.cajaCompacta, esYo && s.cajaYo, { borderLeftColor: color }]}
-        onPress={() => onTocar && onTocar(persona)}
-      >
-        <Avatar persona={persona}
+  return (
+    <View style={[s.tarjeta, esYo && { borderColor: C.teal, borderWidth: 1.5 }]}>
+      {/* El avatar sale por arriba: separa una tarjeta de la siguiente sin
+          gastar espacio vertical. */}
+      <View style={s.avatarCaja}>
+        <Avatar
           persona={persona}
           texto={iniciales(...String(persona.nombre).split(' '))}
-          tam={28}
-          fondo={`${color}1F`}
+          tam={38}
+          fondo={`${color}22`}
           color={color}
         />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={s.nombreCompacto} numberOfLines={1}>{persona.nombre}</Text>
-          {persona.puesto ? (
-            <Text style={s.puestoCompacto} numberOfLines={1}>{persona.puesto}</Text>
-          ) : null}
-        </View>
-        {persona.jefes_extra && persona.jefes_extra.length ? (
-          <MaterialIcons name="alt-route" size={13} color="#5B52C4" />
-        ) : null}
-      </Pressable>
-    );
-  }
-
-  return (
-    <Pressable
-      style={[s.caja, esYo && s.cajaYo, { borderTopColor: color }]}
-      onPress={() => onTocar && onTocar(persona)}
-    >
-      <Avatar persona={persona}
-        persona={persona}
-        texto={iniciales(...String(persona.nombre).split(' '))}
-        tam={38}
-        fondo={`${color}1F`}
-        color={color}
-      />
-      <Text style={s.nombre} numberOfLines={2}>{persona.nombre}</Text>
-      {persona.puesto ? (
-        <Text style={s.puesto} numberOfLines={2}>{persona.puesto}</Text>
-      ) : null}
-
-      <View style={s.marcas}>
-        {aCargo > 0 ? (
-          <View style={[s.aCargo, { backgroundColor: `${color}1F` }]}>
-            <MaterialIcons name="group" size={10} color={color} />
-            <Text style={[s.aCargoN, { color }]}>{aCargo}</Text>
-          </View>
-        ) : null}
-
-        {/* Quien depende de dos areas se marca aca. En el arbol sigue
-            colgando de su jefa principal: dos ramas para la misma persona
-            harian ilegible el diagrama. */}
-        {persona.jefes_extra && persona.jefes_extra.length ? (
-          <View style={[s.aCargo, { backgroundColor: '#EEEDFE' }]}>
-            <MaterialIcons name="alt-route" size={10} color="#5B52C4" />
-            <Text style={[s.aCargoN, { color: '#5B52C4' }]}>
-              {persona.jefes_extra.length}
-            </Text>
-          </View>
-        ) : null}
       </View>
-    </Pressable>
+
+      <Pressable style={s.cuerpo} onPress={() => onTocar && onTocar(persona)}>
+        <View style={s.encabezado}>
+          <Text style={s.nombre} numberOfLines={1}>{persona.nombre}</Text>
+          <MaterialIcons name="open-in-new" size={14} color={C.ink3} />
+        </View>
+
+        {persona.puesto ? (
+          <Text style={[s.puesto, { color }]} numberOfLines={1}>{persona.puesto}</Text>
+        ) : null}
+        {persona.email ? (
+          <Text style={s.email} numberOfLines={1}>{persona.email}</Text>
+        ) : null}
+
+        <View style={s.pie}>
+          {tiempo ? (
+            <View style={s.chip}><Text style={s.chipTxt}>{tiempo}</Text></View>
+          ) : <View />}
+
+          <View style={s.marcas}>
+            {persona.jefes_extra && persona.jefes_extra.length ? (
+              <MaterialIcons name="alt-route" size={14} color="#5B52C4" />
+            ) : null}
+            {hijos > 0 ? (
+              <Pressable style={s.equipo} onPress={onPlegar} hitSlop={10}>
+                <MaterialIcons
+                  name={plegado ? 'add-circle-outline' : 'remove-circle-outline'}
+                  size={15}
+                  color={C.tealDeep}
+                />
+                <Text style={s.equipoN}>{hijos}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      </Pressable>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  scrollH: { paddingHorizontal: 20, paddingVertical: 8 },
-  scrollV: { paddingBottom: 40, alignItems: 'center' },
-
-  bloque: {
-    backgroundColor: '#fff', borderRadius: R.lg, paddingHorizontal: 14,
-    paddingTop: 9, paddingBottom: 13, borderWidth: 2, borderColor: C.navy,
-    alignItems: 'center',
-    shadowColor: '#072D40', shadowOpacity: 0.12, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 }, elevation: 4,
+  acciones: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 10,
   },
-  bloqueTit: {
-    fontSize: 10, fontWeight: '800', letterSpacing: 1.4, color: C.navy,
-    marginBottom: 9,
+  accion: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  accionTxt: { fontSize: 12.5, fontWeight: '600', color: C.tealDeep },
+  total: { fontSize: 11.5, color: C.ink3 },
+
+  direccion: {
+    borderWidth: 1.5, borderColor: C.navy, borderRadius: R.lg,
+    padding: 10, paddingTop: 8, marginBottom: 18, alignSelf: 'flex-start',
   },
-  bloqueCajas: { flexDirection: 'row', gap: 12 },
-  cabeza: { alignItems: 'center' },
-  // La barrita bajo cada director se repite en la linea de sus ramas: con
-  // dos directores, es lo que dice quien lleva que.
-  marcaDirector: { width: 30, height: 3, borderRadius: 2, marginTop: 6 },
-
-  rama: { alignItems: 'center' },
-  bajada: { width: 2, height: ALTO_RAMA, backgroundColor: C.line },
-
-  // Alto fijo para que todos los hijos arranquen a la misma altura, y ancho
-  // completo para que las mitades de hermanos contiguos se toquen.
-  conector: { height: ALTO_RAMA, width: '100%', flexDirection: 'row' },
-  mitad: { flex: 1, height: 2, backgroundColor: C.line },
-  invisible: { backgroundColor: 'transparent' },
-  bajadaHijo: {
-    position: 'absolute', left: '50%', marginLeft: -1, top: 0,
-    width: 2, height: ALTO_RAMA, backgroundColor: C.line,
+  direccionTit: {
+    fontSize: 9.5, fontWeight: '800', letterSpacing: 1.3, color: C.navy,
+    marginBottom: 4, marginLeft: 2,
   },
 
-  filaHijos: { flexDirection: 'row', alignItems: 'flex-start' },
+  tarjeta: {
+    width: ANCHO, backgroundColor: '#fff', borderRadius: 13,
+    borderWidth: 1, borderColor: C.line, marginTop: 18,
+    shadowColor: '#072D40', shadowOpacity: 0.07, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  avatarCaja: {
+    position: 'absolute', top: -16, left: 12, zIndex: 2,
+    borderRadius: 22, borderWidth: 2.5, borderColor: '#fff',
+  },
+  cuerpo: { paddingTop: 26, paddingHorizontal: 12, paddingBottom: 10 },
+  encabezado: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  nombre: { flex: 1, fontSize: 13.5, fontWeight: '700', color: C.ink },
+  puesto: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+  email: { fontSize: 10.5, color: C.ink3, marginTop: 3 },
+  pie: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 9,
+  },
+  chip: {
+    backgroundColor: '#FAF3DF', borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 2.5,
+  },
+  chipTxt: { fontSize: 10, fontWeight: '600', color: '#7A6320' },
+  marcas: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  equipo: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  equipoN: { fontSize: 11.5, fontWeight: '700', color: C.tealDeep },
 
-  columna: { alignItems: 'flex-start' },
-  enFila: { flexDirection: 'row', alignItems: 'stretch', marginBottom: 6 },
-  // Cada fila trae su tramo de vertical; encadenados forman la linea.
-  espinaWrap: { width: 16, justifyContent: 'center' },
-  espinaTramo: {
-    position: 'absolute', left: 0, top: -6, bottom: 0, width: 2,
-    backgroundColor: C.line,
-  },
-  // El ultimo corta a la mitad: la linea termina donde entra la caja, no
-  // sigue de largo hacia abajo.
-  espinaCorta: { bottom: '50%' },
-  tick: { width: 14, height: 2, backgroundColor: C.line, marginLeft: 2 },
-  hijo: { alignItems: 'center', paddingHorizontal: SEPARACION / 2 },
-
-  caja: {
-    width: ANCHO_CAJA, backgroundColor: '#fff', borderRadius: R.md,
-    borderTopWidth: 3, paddingHorizontal: 9, paddingTop: 11, paddingBottom: 10,
-    alignItems: 'center', borderWidth: 1, borderColor: C.line,
-  },
-  cajaYo: { borderWidth: 1.5, borderColor: C.teal, borderTopWidth: 3 },
-  cajaCompacta: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    width: ANCHO_CAJA + 46, backgroundColor: '#fff', borderRadius: R.sm,
-    borderLeftWidth: 3, paddingHorizontal: 9, paddingVertical: 7,
-    borderWidth: 1, borderColor: C.line,
-  },
-  nombreCompacto: { fontSize: 12, fontWeight: '600', color: C.ink },
-  puestoCompacto: { fontSize: 9.5, color: C.ink3, marginTop: 1 },
-  nombre: {
-    fontSize: 12.5, fontWeight: '700', color: C.ink,
-    textAlign: 'center', marginTop: 7, lineHeight: 16,
-  },
-  puesto: {
-    fontSize: 10, color: C.ink3, textAlign: 'center', marginTop: 2, lineHeight: 13,
-  },
-  marcas: { flexDirection: 'row', gap: 5, marginTop: 7 },
-  aCargo: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    borderRadius: 9, paddingHorizontal: 7, paddingVertical: 2,
-  },
-  aCargoN: { fontSize: 10, fontWeight: '700' },
+  hijos: { flexDirection: 'row', marginLeft: 18 },
+  guia: { width: 2, backgroundColor: C.line },
+  fila: { flexDirection: 'row', alignItems: 'flex-start' },
+  brazo: { width: 18, height: 2, backgroundColor: C.line, marginTop: 37 },
 });
