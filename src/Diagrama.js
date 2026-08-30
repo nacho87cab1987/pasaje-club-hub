@@ -113,25 +113,27 @@ export default function Diagrama({ personas, yo, onTocar }) {
           contentContainerStyle={{ padding: 16, paddingBottom: 70 }}
         >
           {raices.length > 1 ? (
-            <View style={s.direccion}>
-              <Text style={s.direccionTit}>DIRECCIÓN</Text>
+            <View style={[s.direccion, { alignSelf: 'center' }]}>
               {raices.map((p) => (
                 <Tarjeta key={p.id} persona={p} esYo={p.id === yo} onTocar={onTocar} />
               ))}
             </View>
           ) : null}
 
-          {arriba.map((p) => (
-            <Rama
-              key={p.id}
-              persona={p}
-              porJefe={porJefe}
-              yo={yo}
-              onTocar={onTocar}
-              plegados={plegados}
-              alternar={alternar}
-            />
-          ))}
+          <View style={s.filaHijos}>
+            {arriba.map((p) => (
+              <View key={p.id} style={s.hijo}>
+                <Rama
+                  persona={p}
+                  porJefe={porJefe}
+                  yo={yo}
+                  onTocar={onTocar}
+                  plegados={plegados}
+                  alternar={alternar}
+                />
+              </View>
+            ))}
+          </View>
         </ScrollView>
       </ScrollView>
     </View>
@@ -143,8 +145,17 @@ function Rama({ persona, porJefe, yo, onTocar, plegados, alternar }) {
   const hijos = porJefe[persona.id] || [];
   const plegado = plegados.has(persona.id);
 
+  // Cuando alguien tiene varias personas a cargo y ninguna tiene equipo
+  // propio -una supervisora con sus vendedoras- se apilan en columna.
+  //
+  // El abanico se lee bien cuando hay ramas, pero con diez hojas al lado se
+  // vuelve un diagrama de dos mil pixeles de ancho. En columna ocupa lo mismo
+  // que una sola tarjeta.
+  const todasHojas = hijos.every((h) => !(porJefe[h.id] || []).length);
+  const enColumna = hijos.length >= 3 && todasHojas;
+
   return (
-    <View>
+    <View style={{ alignItems: 'center' }}>
       <Tarjeta
         persona={persona}
         esYo={persona.id === yo}
@@ -154,37 +165,94 @@ function Rama({ persona, porJefe, yo, onTocar, plegados, alternar }) {
         onPlegar={hijos.length ? () => alternar(persona.id) : null}
       />
 
-      {hijos.length && !plegado ? (
-        <View style={s.hijos}>
-          {/* La vertical que agrupa a todo el equipo de esta persona. */}
-          <View style={s.guia} />
-          <View style={{ flex: 1 }}>
-            {hijos.map((h) => (
-              <View key={h.id} style={s.fila}>
-                <View style={s.brazo} />
-                <View>
-                  <Rama
-                    persona={h}
-                    porJefe={porJefe}
-                    yo={yo}
-                    onTocar={onTocar}
-                    plegados={plegados}
-                    alternar={alternar}
-                  />
+      {hijos.length && !plegado && enColumna ? (
+        <>
+          <View style={s.bajada} />
+          <View style={s.columna}>
+            {hijos.map((h, i) => (
+              <View key={h.id} style={s.enFila}>
+                <View style={s.espinaWrap}>
+                  <View style={[s.espinaTramo, i === hijos.length - 1 && s.espinaCorta]} />
+                  <View style={s.tick} />
                 </View>
+                <Tarjeta
+                  persona={h}
+                  esYo={h.id === yo}
+                  onTocar={onTocar}
+                  compacta
+                />
               </View>
             ))}
           </View>
-        </View>
+        </>
+      ) : hijos.length && !plegado ? (
+        <>
+          <View style={s.bajada} />
+          <View style={s.filaHijos}>
+            {hijos.map((h, i) => (
+              <View key={h.id} style={s.hijo}>
+                {/* Cada hijo dibuja su mitad del travesano: las mitades de
+                    hermanos contiguos se tocan y forman la linea. Asi no hay
+                    que medir el ancho de nada. */}
+                <View style={s.conector}>
+                  {hijos.length > 1 ? (
+                    <>
+                      <View style={[s.mitad, i === 0 && s.invisible]} />
+                      <View style={[s.mitad, i === hijos.length - 1 && s.invisible]} />
+                    </>
+                  ) : null}
+                  <View style={s.bajadaHijo} />
+                </View>
+
+                <Rama
+                  persona={h}
+                  porJefe={porJefe}
+                  yo={yo}
+                  onTocar={onTocar}
+                  plegados={plegados}
+                  alternar={alternar}
+                />
+              </View>
+            ))}
+          </View>
+        </>
       ) : null}
     </View>
   );
 }
 
 
-function Tarjeta({ persona, esYo, onTocar, hijos = 0, plegado, onPlegar }) {
+function Tarjeta({ persona, esYo, onTocar, hijos = 0, plegado, onPlegar, compacta }) {
   const color = persona.area_color || C.tealDeep;
   const tiempo = antiguedad(persona.meses);
+
+  // Version en fila para las columnas: mismo contenido, menos alto.
+  if (compacta) {
+    return (
+      <Pressable
+        style={[s.compacta, esYo && { borderColor: C.teal, borderWidth: 1.5 },
+                { borderLeftColor: color, borderLeftWidth: 3 }]}
+        onPress={() => onTocar && onTocar(persona)}
+      >
+        <Avatar
+          persona={persona}
+          texto={iniciales(...String(persona.nombre).split(' '))}
+          tam={30}
+          fondo={`${color}22`}
+          color={color}
+        />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.nombreC} numberOfLines={1}>{persona.nombre}</Text>
+          {persona.puesto ? (
+            <Text style={s.puestoC} numberOfLines={1}>{persona.puesto}</Text>
+          ) : null}
+        </View>
+        {persona.jefes_extra && persona.jefes_extra.length ? (
+          <MaterialIcons name="alt-route" size={13} color="#5B52C4" />
+        ) : null}
+      </Pressable>
+    );
+  }
 
   return (
     <View style={[s.tarjeta, esYo && { borderColor: C.teal, borderWidth: 1.5 }]}>
@@ -250,7 +318,8 @@ const s = StyleSheet.create({
 
   direccion: {
     borderWidth: 1.5, borderColor: C.navy, borderRadius: R.lg,
-    padding: 10, paddingTop: 8, marginBottom: 18, alignSelf: 'flex-start',
+    paddingHorizontal: 10, paddingTop: 8, paddingBottom: 12, marginBottom: 4,
+    flexDirection: 'row', gap: 10,
   },
   direccionTit: {
     fontSize: 9.5, fontWeight: '800', letterSpacing: 1.3, color: C.navy,
@@ -285,8 +354,33 @@ const s = StyleSheet.create({
   equipo: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   equipoN: { fontSize: 11.5, fontWeight: '700', color: C.tealDeep },
 
-  hijos: { flexDirection: 'row', marginLeft: 18 },
-  guia: { width: 2, backgroundColor: C.line },
-  fila: { flexDirection: 'row', alignItems: 'flex-start' },
-  brazo: { width: 18, height: 2, backgroundColor: C.line, marginTop: 37 },
+  // Las columnas, para equipos de hojas.
+  columna: { alignItems: 'flex-start', alignSelf: 'flex-start' },
+  enFila: { flexDirection: 'row', alignItems: 'stretch', marginBottom: 6 },
+  espinaWrap: { width: 16, justifyContent: 'center' },
+  espinaTramo: {
+    position: 'absolute', left: 0, top: -6, bottom: 0, width: 2,
+    backgroundColor: C.line,
+  },
+  espinaCorta: { bottom: '50%' },
+  tick: { width: 14, height: 2, backgroundColor: C.line, marginLeft: 2 },
+  compacta: {
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    width: ANCHO, backgroundColor: '#fff', borderRadius: 10,
+    borderWidth: 1, borderColor: C.line, paddingHorizontal: 10, paddingVertical: 8,
+  },
+  nombreC: { fontSize: 12.5, fontWeight: '600', color: C.ink },
+  puestoC: { fontSize: 10, color: C.ink3, marginTop: 1 },
+
+  // El abanico: los hijos van lado a lado debajo del padre.
+  bajada: { width: 2, height: 20, backgroundColor: C.line },
+  filaHijos: { flexDirection: 'row', alignItems: 'flex-start' },
+  hijo: { alignItems: 'center', paddingHorizontal: 9 },
+  conector: { height: 20, width: '100%', flexDirection: 'row' },
+  mitad: { flex: 1, height: 2, backgroundColor: C.line },
+  invisible: { backgroundColor: 'transparent' },
+  bajadaHijo: {
+    position: 'absolute', left: '50%', marginLeft: -1, top: 0,
+    width: 2, height: 20, backgroundColor: C.line,
+  },
 });
