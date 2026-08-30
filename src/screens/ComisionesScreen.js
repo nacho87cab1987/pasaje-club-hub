@@ -280,13 +280,19 @@ export default function ComisionesScreen({ navigation }) {
             onPress={() => { setPeriodo(p.periodo); setVerPeriodos(false); }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={s.opcionT}>{nombreMes(p.periodo)}</Text>
+              <Text style={[s.opcionT, p.vacio && { color: C.ink3 }]}>
+                {nombreMes(p.periodo)}
+              </Text>
               <Text style={s.opcionS}>
-                {p.operaciones} {p.operaciones === 1 ? 'operacion' : 'operaciones'}
-                {p.sin_cobrar > 0 ? ` · ${p.sin_cobrar} sin cobrar` : ''}
+                {p.vacio
+                  ? 'Sin comisiones'
+                  : `${p.operaciones} ${p.operaciones === 1 ? 'operación' : 'operaciones'}`
+                    + (p.sin_cobrar > 0 ? ` · ${p.sin_cobrar} sin cobrar` : '')}
               </Text>
             </View>
-            <Text style={s.opcionM}>{plata(p.total)}</Text>
+            {/* Los meses sin nada no muestran importe: un "$ 0" hace dudar
+                de si no hubo comisiones o si fallo la carga. */}
+            {!p.vacio ? <Text style={s.opcionM}>{plata(p.total)}</Text> : null}
           </Pressable>
         ))}
       </Hoja>
