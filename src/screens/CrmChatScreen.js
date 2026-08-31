@@ -105,8 +105,8 @@ export default function CrmChatScreen({ route, navigation }) {
   // Donde esta parada la lista. Se guarda mientras se recorre para poder
   // volver ahi si algo la mueve.
   const posicion = useRef(0);
-  // Solo se baja sola la primera vez. Despues manda la persona.
-  const yaBajo = useRef(false);
+  // Mientras sea false, la lista se mantiene pegada al ultimo mensaje.
+  const tocoLaLista = useRef(false);
 
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState(null);
@@ -154,7 +154,7 @@ export default function CrmChatScreen({ route, navigation }) {
     }
   }, [id, boot && boot.credencial]);
 
-  useEffect(() => { yaBajo.current = false; }, [id]);
+  useEffect(() => { tocoLaLista.current = false; }, [id]);
   useEffect(() => { cargar(); }, [cargar]);
 
   // Plantillas y etiquetas se piden una sola vez: no cambian seguido.
@@ -451,17 +451,19 @@ export default function CrmChatScreen({ route, navigation }) {
         data={mensajes}
         keyExtractor={(m) => String(m.id)}
         onScroll={(e) => { posicion.current = e.nativeEvent.contentOffset.y; }}
-        // Al abrir hay que quedar en el ultimo mensaje: una conversacion se
-        // lee desde donde quedo, no desde el principio.
+        // Al abrir hay que quedar en el ultimo mensaje.
         //
-        // Se usa onContentSizeChange y no un efecto porque al montar la lista
-        // todavia no sabe cuanto mide: bajar antes de eso no hace nada.
+        // Se baja en CADA recalculo mientras la persona no haya tocado la
+        // lista. Bajar una sola vez no alcanza: las burbujas con imagenes
+        // cambian de alto al terminar de cargar y el final se corre, asi que
+        // el primer intento queda a mitad de camino.
         onContentSizeChange={() => {
-          if (yaBajo.current) return;
+          if (tocoLaLista.current) return;
           if (!mensajes || !mensajes.length) return;
-          yaBajo.current = true;
           lista.current && lista.current.scrollToEnd({ animated: false });
         }}
+        // Desde que la persona arrastra, manda ella.
+        onScrollBeginDrag={() => { tocoLaLista.current = true; }}
         scrollEventThrottle={32}
         contentContainerStyle={{ padding: 14 }}
         renderItem={({ item }) => {
@@ -492,8 +494,13 @@ export default function CrmChatScreen({ route, navigation }) {
                   }
                   if (a.tipo === 'audio') {
                     // Las notas de voz de WhatsApp vienen en OGG y iOS no las
-                    // reproduce. Para esas se ofrece la transcripcion.
-                    const esOgg = /\.(ogg|oga|opus)$/i.test(a.archivo_path || '');
+                    // reproduce.
+                    //
+                    // Se mira el mime ademas de la extension: el archivo puede
+                    // estar guardado sin extension o con otra, y quedarse solo
+                    // con el nombre deja pasar audios que no van a sonar.
+                    const marca = `${a.mime || ''} ${a.archivo_path || ''}`.toLowerCase();
+                    const esOgg = /ogg|oga|opus/.test(marca);
                     if (esOgg && Platform.OS === 'ios') {
                       return (
                         <NotaDeVoz

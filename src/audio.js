@@ -21,6 +21,29 @@ try {
 
 export const hayAudio = !!(Audio && Audio.useAudioRecorder);
 
+/**
+ * Deja el audio listo para reproducir.
+ *
+ * Sin esto, iOS silencia la reproduccion cuando el telefono tiene puesto el
+ * interruptor de silencio, que es como lo lleva casi todo el mundo. El audio
+ * corre, la barra avanza, y no se escucha nada.
+ *
+ * Se llama al arrancar la app: antes solo se configuraba al grabar, asi que
+ * quien nunca habia grabado no escuchaba ningun audio.
+ */
+export async function prepararAudio() {
+  if (!Audio || !Audio.setAudioModeAsync) return;
+  try {
+    await Audio.setAudioModeAsync({
+      allowsRecording: false,
+      playsInSilentMode: true,
+      shouldPlayInBackground: false,
+    });
+  } catch (e) {
+    console.warn('[audio] no se pudo configurar el modo:', e.message);
+  }
+}
+
 export function segundos(s) {
   const n = Math.max(0, Math.round(s || 0));
   return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
@@ -67,7 +90,12 @@ export function useGrabador() {
     setGrabando(false);
     try {
       await recorder.stop();
-      await Audio.setAudioModeAsync({ allowsRecording: false });
+      // playsInSilentMode se repite a proposito.
+      //
+      // setAudioModeAsync reemplaza el modo entero, no lo modifica: pasarle
+      // solo allowsRecording apagaba la reproduccion con el telefono en
+      // silencio. Por eso los audios "se reproducian" sin que se oyera nada.
+      await Audio.setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       const uri = recorder.uri;
       const dur = seg;
       setSeg(0);
@@ -90,7 +118,7 @@ export function useGrabador() {
     try {
       if (recorder) {
         await recorder.stop();
-        await Audio.setAudioModeAsync({ allowsRecording: false });
+        await Audio.setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       }
     } catch (e) { /* nada que hacer */ }
   };
