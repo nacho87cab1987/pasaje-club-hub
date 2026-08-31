@@ -512,7 +512,7 @@ export default function CrmChatScreen({ route, navigation }) {
                         />
                       );
                     }
-                    return <Reproductor key={a.id} uri={url} claro={mio} />;
+                    return <Reproductor key={a.id} uri={url} mime={a.mime} claro={mio} />;
                   }
                   return <AdjuntoArchivo key={a.id} adjunto={a} url={url} claro={mio} />;
                 })}

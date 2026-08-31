@@ -57,9 +57,9 @@ export default function ReconocerFormScreen({ navigation, route }) {
     }
   }, [editando, valores]);
 
-  const agregarMedia = async (camara) => {
+  const agregarMedia = async (camara, soloVideo) => {
     const assets = await elegirImagenes({
-      camara, maximo: 4 - media.length, conVideo: true,
+      camara, maximo: 4 - media.length, soloVideo,
     });
     if (!assets.length) return;
 
@@ -67,6 +67,9 @@ export default function ReconocerFormScreen({ navigation, route }) {
     try {
       for (const a of assets) {
         const r = await subirImagen(a, 'muro');
+        // Sin url no hay nada que mostrar ni que guardar: agregar una tarjeta
+        // vacia solo confunde.
+        if (!r || !r.url) continue;
         setMedia((m) => [...m, {
           tipo: r.tipo || 'imagen',
           url: r.url,
@@ -222,8 +225,9 @@ export default function ReconocerFormScreen({ navigation, route }) {
                 <Pressable
                   style={s.mediaAgregar}
                   onPress={() => Alert.alert('Agregar', null, [
-                    { text: 'Elegir de la galería', onPress: () => agregarMedia(false) },
-                    { text: 'Sacar una foto', onPress: () => agregarMedia(true) },
+                    { text: 'Elegir fotos', onPress: () => agregarMedia(false, false) },
+                    { text: 'Sacar una foto', onPress: () => agregarMedia(true, false) },
+                    { text: 'Elegir un video', onPress: () => agregarMedia(false, true) },
                     { text: 'Cancelar', style: 'cancel' },
                   ])}
                   disabled={subiendo}

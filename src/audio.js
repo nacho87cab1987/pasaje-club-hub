@@ -21,6 +21,28 @@ try {
 
 export const hayAudio = !!(Audio && Audio.useAudioRecorder);
 
+/** La extension real del audio, mirando la URL y el mime. */
+function extensionDe(uri, mime) {
+  const m = String(uri).match(/\.(m4a|mp3|ogg|oga|opus|wav|aac|amr|caf|mp4)(?:$|[?&])/i);
+  if (m) return m[1].toLowerCase();
+
+  const tipos = {
+    'audio/mp4': 'm4a', 'audio/m4a': 'm4a', 'audio/aac': 'aac',
+    'audio/mpeg': 'mp3', 'audio/ogg': 'ogg', 'audio/wav': 'wav',
+    'audio/amr': 'amr', 'audio/x-caf': 'caf',
+  };
+  return tipos[String(mime || '').toLowerCase()] || 'm4a';
+}
+
+/** Un nombre estable para el archivo en cache. */
+function hash(t) {
+  let h = 0;
+  for (let i = 0; i < String(t).length; i++) {
+    h = ((h << 5) - h + String(t).charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36);
+}
+
 /**
  * Deja el audio listo para reproducir.
  *
@@ -128,20 +150,57 @@ export function useGrabador() {
 
 
 /** Burbuja de audio con play/pausa y barra de progreso. */
-export function Reproductor({ uri, duracion, claro }) {
-  const player = hayAudio ? Audio.useAudioPlayer({ uri }) : null;
+export function Reproductor({ uri, duracion, claro, mime }) {
+  // El audio se baja al telefono antes de reproducirlo.
+  //
+  // La URL del servidor es `hub_img.php?f=...`, sin extension en la ruta. iOS
+  // deduce el formato del nombre del archivo, y sin extension no sabe que
+  // esta recibiendo: el reproductor arranca, la barra avanza, y no suena
+  // nada. Con el archivo local y su extension correcta, sabe leerlo.
+  const [local, setLocal] = useState(null);
+  const [falla, setFalla] = useState(null);
+
+  useEffect(() => {
+    let vivo = true;
+    if (!uri || !hayAudio) return undefined;
+
+    (async () => {
+      try {
+        const FS = require('expo-file-system');
+        if (!FS || !FS.downloadAsync) { if (vivo) setLocal(uri); return; }
+
+        const ext = extensionDe(uri, mime);
+        // El nombre sale de la URL: el mismo audio se baja una sola vez.
+        const nombre = `aud_${hash(uri)}.${ext}`;
+        const destino = (FS.cacheDirectory || '') + nombre;
+
+        const info = await FS.getInfoAsync(destino);
+        if (!info.exists) await FS.downloadAsync(uri, destino);
+        if (vivo) setLocal(destino);
+      } catch (e) {
+        // Si no se puede bajar, se intenta igual con la URL remota.
+        console.warn('[audio] no pude bajar:', e.message);
+        if (vivo) { setLocal(uri); setFalla(e.message); }
+      }
+    })();
+
+    return () => { vivo = false; };
+  }, [uri, mime]);
+
+  const player = hayAudio ? Audio.useAudioPlayer(local ? { uri: local } : null) : null;
   const estado = hayAudio && Audio.useAudioPlayerStatus
     ? Audio.useAudioPlayerStatus(player)
     : null;
   const [cargando, setCargando] = useState(false);
 
+  const listo = !!local;
   const sonando = !!(estado && estado.playing);
   const total = (estado && estado.duration) || duracion || 0;
   const actual = (estado && estado.currentTime) || 0;
   const avance = total > 0 ? Math.min(1, actual / total) : 0;
 
   const alternar = async () => {
-    if (!player) return;
+    if (!player || !listo) return;
     try {
       if (sonando) {
         player.pause();

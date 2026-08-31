@@ -17,7 +17,9 @@ import { subirArchivo } from './subir';
  * pero subir 12 MB de una foto de iPhone por datos moviles es una espera
  * innecesaria.
  */
-export async function elegirImagenes({ camara = false, maximo = 4, conVideo = false } = {}) {
+export async function elegirImagenes({
+  camara = false, maximo = 4, conVideo = false, soloVideo = false,
+} = {}) {
   const permiso = camara
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -30,25 +32,36 @@ export async function elegirImagenes({ camara = false, maximo = 4, conVideo = fa
     return [];
   }
 
+  // Un tipo por vez y no una lista mixta.
+  //
+  // Pedir imagenes y videos juntos hacia que la app se cerrara al abrir la
+  // galeria. El camino de solo imagenes es el que viene funcionando en el
+  // muro desde el principio, asi que se lo respeta y el video se pide aparte.
+  const tipos = soloVideo ? ['videos'] : ['images'];
+
   const opciones = {
-    mediaTypes: conVideo ? ['images', 'videos'] : ['images'],
+    mediaTypes: tipos,
     quality: 0.75,
     exif: false,          // no mandamos ubicacion ni datos del dispositivo
-    // Un minuto es suficiente para un saludo o un brindis, y evita videos
-    // de 200 MB que no van a llegar a subir.
-    ...(conVideo ? { videoMaxDuration: 60 } : {}),
+    // Un minuto alcanza para un saludo o un brindis, y evita videos de
+    // 200 MB que no van a llegar a subir.
+    ...(soloVideo ? { videoMaxDuration: 60 } : {}),
   };
+
+  // Nunca menos de uno: un limite en cero o negativo se comporta distinto
+  // segun la plataforma.
+  const tope = Math.max(1, maximo);
 
   const r = camara
     ? await ImagePicker.launchCameraAsync(opciones)
     : await ImagePicker.launchImageLibraryAsync({
         ...opciones,
-        allowsMultipleSelection: true,
-        selectionLimit: maximo,
+        allowsMultipleSelection: !soloVideo,
+        selectionLimit: tope,
       });
 
   if (r.canceled) return [];
-  return (r.assets || []).slice(0, maximo);
+  return (r.assets || []).slice(0, tope);
 }
 
 /**
