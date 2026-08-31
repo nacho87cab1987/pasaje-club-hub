@@ -192,6 +192,7 @@ export function crmApi(credencial) {
     vendedores: ()             => api.get('crm_conversaciones.php', 'vendedores_admin'),
     // Derivar: el admin usa 'reasignar', la supervisora 'reasignar_equipo'.
     // llamar() reintenta con la variante correcta segun la credencial.
+    transcribir: (adjunto_id) => llamar('transcribir', 'POST', { adjunto_id }),
     derivar:   (id, vendedor_id) =>
       llamar(admin ? 'reasignar' : 'reasignar_equipo', 'POST', { id, vendedor_id }),
     estado:    (id, estado, prioridad) => llamar('cambiar_estado', 'POST', { id, estado, prioridad }),

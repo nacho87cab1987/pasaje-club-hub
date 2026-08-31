@@ -41,6 +41,58 @@ const esPlaceholder = (t) => String(t || '').startsWith('\uD83D\uDCCE');
 const PALETA = ['#11BCB3', '#072D40', '#790F35', '#D7CA4A', '#185FA5',
                 '#2e7d32', '#e53935', '#BA7517', '#7F77DD', '#8AA0AB'];
 
+/**
+ * Una nota de voz que el telefono no puede reproducir.
+ *
+ * En vez de mostrar un reproductor que no anda, se ofrece pasarla a texto.
+ * La transcripcion queda guardada, asi la proxima vez ya esta.
+ */
+function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
+  const [texto, setTexto] = useState(adjunto.transcripcion || null);
+  const [cargando, setCargando] = useState(false);
+
+  const pedir = async () => {
+    setCargando(true);
+    try {
+      setTexto(await onTranscribir(adjunto.id));
+    } catch (e) {
+      Alert.alert('No se pudo transcribir', e.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  if (texto) {
+    return (
+      <View style={s.nota}>
+        <View style={s.notaTop}>
+          <MaterialIcons name="graphic-eq" size={14} color={claro ? '#A9CBD6' : C.ink3} />
+          <Text style={[s.notaTit, claro && { color: '#A9CBD6' }]}>Nota de voz</Text>
+        </View>
+        <Text style={[s.notaTxt, claro && { color: '#fff' }]}>{texto}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Pressable style={s.nota} onPress={pedir} disabled={cargando}>
+      <View style={s.notaTop}>
+        <MaterialIcons name="graphic-eq" size={16} color={claro ? '#A9CBD6' : C.ink3} />
+        <Text style={[s.notaTit, claro && { color: '#A9CBD6' }]}>
+          {cargando ? 'Transcribiendo…' : 'Nota de voz'}
+        </Text>
+        {cargando ? <ActivityIndicator size="small" color={claro ? '#fff' : C.tealDeep} /> : null}
+      </View>
+      {!cargando ? (
+        <Text style={[s.notaAccion, claro && { color: '#fff' }]}>
+          Tocá para leer lo que dice
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+
 export default function CrmChatScreen({ route, navigation }) {
   const { id } = route.params;
   const { boot } = useAuth();
@@ -53,6 +105,8 @@ export default function CrmChatScreen({ route, navigation }) {
   // Donde esta parada la lista. Se guarda mientras se recorre para poder
   // volver ahi si algo la mueve.
   const posicion = useRef(0);
+  // Solo se baja sola la primera vez. Despues manda la persona.
+  const yaBajo = useRef(false);
 
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState(null);
@@ -100,6 +154,7 @@ export default function CrmChatScreen({ route, navigation }) {
     }
   }, [id, boot && boot.credencial]);
 
+  useEffect(() => { yaBajo.current = false; }, [id]);
   useEffect(() => { cargar(); }, [cargar]);
 
   // Plantillas y etiquetas se piden una sola vez: no cambian seguido.
@@ -255,6 +310,18 @@ export default function CrmChatScreen({ route, navigation }) {
     setTimeout(ir, 180);
   };
 
+  const transcribir = async (adjuntoId) => {
+    const r = await crm.transcribir(adjuntoId);
+    // Se guarda en el mensaje para que quede a la vista sin recargar todo.
+    setMensajes((ms) => (ms || []).map((m) => ({
+      ...m,
+      adjuntos: (m.adjuntos || []).map((a) => (
+        a.id === adjuntoId ? { ...a, transcripcion: r.texto } : a
+      )),
+    })));
+    return r.texto;
+  };
+
   const menuPrincipal = () => {
     const cliente = conv
       ? `${conv.cliente_nombre || ''} ${conv.cliente_apellido || ''}`.trim()
@@ -384,6 +451,17 @@ export default function CrmChatScreen({ route, navigation }) {
         data={mensajes}
         keyExtractor={(m) => String(m.id)}
         onScroll={(e) => { posicion.current = e.nativeEvent.contentOffset.y; }}
+        // Al abrir hay que quedar en el ultimo mensaje: una conversacion se
+        // lee desde donde quedo, no desde el principio.
+        //
+        // Se usa onContentSizeChange y no un efecto porque al montar la lista
+        // todavia no sabe cuanto mide: bajar antes de eso no hace nada.
+        onContentSizeChange={() => {
+          if (yaBajo.current) return;
+          if (!mensajes || !mensajes.length) return;
+          yaBajo.current = true;
+          lista.current && lista.current.scrollToEnd({ animated: false });
+        }}
         scrollEventThrottle={32}
         contentContainerStyle={{ padding: 14 }}
         renderItem={({ item }) => {
@@ -413,6 +491,20 @@ export default function CrmChatScreen({ route, navigation }) {
                     );
                   }
                   if (a.tipo === 'audio') {
+                    // Las notas de voz de WhatsApp vienen en OGG y iOS no las
+                    // reproduce. Para esas se ofrece la transcripcion.
+                    const esOgg = /\.(ogg|oga|opus)$/i.test(a.archivo_path || '');
+                    if (esOgg && Platform.OS === 'ios') {
+                      return (
+                        <NotaDeVoz
+                          key={a.id}
+                          adjunto={a}
+                          url={url}
+                          claro={mio}
+                          onTranscribir={transcribir}
+                        />
+                      );
+                    }
                     return <Reproductor key={a.id} uri={url} claro={mio} />;
                   }
                   return <AdjuntoArchivo key={a.id} adjunto={a} url={url} claro={mio} />;
@@ -798,6 +890,11 @@ const s = StyleSheet.create({
   suya: { backgroundColor: '#fff', borderBottomLeftRadius: 4 },
   msg: { fontSize: 14.5, lineHeight: 20, color: C.ink },
   pie: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, paddingHorizontal: 4 },
+  nota: { paddingVertical: 4, minWidth: 168 },
+  notaTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  notaTit: { fontSize: 11.5, fontWeight: '700', color: C.ink3 },
+  notaTxt: { fontSize: 14.5, color: C.ink, marginTop: 5, lineHeight: 20 },
+  notaAccion: { fontSize: 12.5, color: C.tealDeep, marginTop: 3, fontWeight: '600' },
   hora: { fontSize: 10.5, color: C.ink3 },
   nota: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: '#FAEEDA',
