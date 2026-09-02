@@ -21,6 +21,25 @@ try {
 
 export const hayAudio = !!(Audio && Audio.useAudioRecorder);
 
+/**
+ * expo-file-system, de donde este.
+ *
+ * Desde el SDK 54 la API de siempre se movio a /legacy y el paquete raiz
+ * lanza un error de deprecacion al usarla. Se prueban las dos rutas para que
+ * funcione antes y despues de esa migracion.
+ */
+function fileSystem() {
+  try {
+    const legacy = require('expo-file-system/legacy');
+    if (legacy && legacy.downloadAsync) return legacy;
+  } catch (e) { /* version anterior al cambio */ }
+  try {
+    return require('expo-file-system');
+  } catch (e) {
+    return null;
+  }
+}
+
 /** La extension real del audio, mirando la URL y el mime. */
 function extensionDe(uri, mime) {
   const m = String(uri).match(/\.(m4a|mp3|ogg|oga|opus|wav|aac|amr|caf|mp4)(?:$|[?&])/i);
@@ -175,7 +194,10 @@ export function Reproductor({ uri, duracion, claro, mime }) {
 
     (async () => {
       try {
-        const FS = require('expo-file-system');
+        // La API vieja vive en /legacy desde el SDK 54: importarla del
+        // paquete raiz tira un error de deprecacion y corta la descarga.
+        // Es lo mismo que ya hacen subir.js y archivos.js.
+        const FS = fileSystem();
         if (!FS || !FS.downloadAsync) {
           if (vivo) setDiag({ paso: 'sin_filesystem' });
           return;
@@ -184,24 +206,23 @@ export function Reproductor({ uri, duracion, claro, mime }) {
         const ext = extensionDe(uri, mime);
         const destino = (FS.cacheDirectory || '') + `aud_${hash(uri)}.${ext}`;
 
-        let info = await FS.getInfoAsync(destino);
-        if (!info.exists) {
-          const r = await FS.downloadAsync(uri, destino);
-          if (r.status !== 200) {
-            if (vivo) setDiag({ paso: 'descarga', http: r.status, destino });
-            return;
-          }
-          info = await FS.getInfoAsync(destino);
-        }
-
-        if (!info.exists || !info.size) {
-          if (vivo) setDiag({ paso: 'archivo_vacio', destino });
+        // Se baja siempre: preguntar si ya existe cuesta una llamada mas y
+        // el archivo queda igual en cache, asi que no vale la complicacion.
+        const r = await FS.downloadAsync(uri, destino);
+        if (!r || r.status !== 200) {
+          if (vivo) setDiag({ paso: 'descarga', http: r && r.status });
           return;
         }
 
+        // El tamano es opcional: si getInfoAsync no esta, se sigue igual.
+        let bytes = null;
+        try {
+          if (FS.getInfoAsync) bytes = (await FS.getInfoAsync(destino)).size || null;
+        } catch (e) { /* no es imprescindible */ }
+
         // replace() es lo que hace que el player tome el archivo nuevo.
         if (player.replace) player.replace({ uri: destino });
-        if (vivo) setDiag({ paso: 'listo', destino, bytes: info.size, ext });
+        if (vivo) setDiag({ paso: 'listo', destino, bytes, ext });
       } catch (e) {
         if (vivo) setDiag({ paso: 'error', mensaje: e.message });
       }
@@ -249,7 +270,7 @@ export function Reproductor({ uri, duracion, claro, mime }) {
     l.push(`Sonando: ${sonando ? 'si' : 'no'}`);
     l.push(`Volumen: ${player && player.volume !== undefined ? player.volume : '?'}`);
     l.push('');
-    l.push(`URL: ${String(uri).slice(0, 90)}`);
+    l.push(`URL: ${String(uri).slice(-70)}`);
     Alert.alert('Diagnóstico del audio', l.join('\n'));
   };
 
