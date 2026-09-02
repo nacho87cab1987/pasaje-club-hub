@@ -80,9 +80,11 @@ function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
         <Text style={[s.notaTxt, claro && { color: '#fff' }]}>{texto}</Text>
       ) : null}
 
-      {!texto && !cargando ? (
+      {!cargando ? (
         <Pressable onPress={pedir} style={{ marginTop: 5 }}>
-          <Text style={[s.notaAccion, claro && { color: '#fff' }]}>Leer lo que dice</Text>
+          <Text style={[s.notaAccion, claro && { color: '#fff' }]}>
+            {texto ? 'Transcribir de nuevo' : 'Leer lo que dice'}
+          </Text>
         </Pressable>
       ) : null}
     </View>
@@ -490,15 +492,16 @@ export default function CrmChatScreen({ route, navigation }) {
                     );
                   }
                   if (a.tipo === 'audio') {
-                    // Las notas de voz de WhatsApp vienen en OGG y iOS no las
-                    // reproduce.
+                    // Se lista lo que iOS SI reproduce, en vez de intentar
+                    // adivinar lo que no.
                     //
-                    // Se mira el mime ademas de la extension: el archivo puede
-                    // estar guardado sin extension o con otra, y quedarse solo
-                    // con el nombre deja pasar audios que no van a sonar.
+                    // Buscar "ogg" fallaba cuando el archivo estaba guardado
+                    // sin extension o con otro mime, y entonces se mostraba un
+                    // reproductor que no iba a sonar. Al reves no hay margen:
+                    // si no es un formato conocido, se ofrece la lectura.
                     const marca = `${a.mime || ''} ${a.archivo_path || ''}`.toLowerCase();
-                    const esOgg = /ogg|oga|opus/.test(marca);
-                    if (esOgg && Platform.OS === 'ios') {
+                    const suena = /m4a|mp3|mpeg|aac|wav|caf|mp4/.test(marca);
+                    if (!suena && Platform.OS === 'ios') {
                       return (
                         <NotaDeVoz
                           key={a.id}
