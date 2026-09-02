@@ -35,6 +35,7 @@ export default function PresupuestosScreen({ navigation, route }) {
   const [q, setQ] = useState('');
   const [scope, setScope] = useState('mios');
   const [veTodo, setVeTodo] = useState(false);
+  const [esSupervisor, setEsSupervisor] = useState(false);
   const [refrescando, setRefrescando] = useState(false);
   const ctx = usarPosicionToque();
 
@@ -45,7 +46,11 @@ export default function PresupuestosScreen({ navigation, route }) {
       setItems(r.items || []);
       // El servidor lo llama ve_todos: quien supervisa puede alternar entre
       // los propios y los de todo el equipo.
-      setVeTodo(!!r.ve_todos || !!r.es_supervisor);
+      // Son dos cosas distintas: una supervisora ve a su equipo, pero no
+      // necesariamente a toda la agencia. Mezclarlas hacia que le apareciera
+      // la opcion "Todos" mostrandole cosas que no le corresponden.
+      setVeTodo(!!r.ve_todos);
+      setEsSupervisor(!!r.es_supervisor);
     } catch (e) { setError(e.message); setItems([]); }
   }, [scope]);
 
@@ -136,9 +141,15 @@ export default function PresupuestosScreen({ navigation, route }) {
         {q ? <MaterialIcons name="close" size={19} color={C.ink3} onPress={() => setQ('')} /> : null}
       </View>
 
-      {veTodo ? (
+      {/* El selector aparece tambien para una supervisora, aunque no vea
+          toda la agencia: necesita poder separar lo suyo de lo de su equipo. */}
+      {veTodo || esSupervisor ? (
         <View style={s.scopes}>
-          {[{ k: 'mios', n: 'Mios' }, { k: 'todos', n: 'Todos' }].map((o) => (
+          {[
+            { k: 'mios', n: 'Míos' },
+            ...(esSupervisor ? [{ k: 'equipo', n: 'Mi equipo' }] : []),
+            ...(veTodo ? [{ k: 'todos', n: 'Todos' }] : []),
+          ].map((o) => (
             <Pressable key={o.k} onPress={() => setScope(o.k)}
               style={[s.scope, scope === o.k && s.scopeOn]}>
               <Text style={[s.scopeTxt, scope === o.k && { color: C.navy, fontWeight: '700' }]}>

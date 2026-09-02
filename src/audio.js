@@ -8,7 +8,7 @@
 // ============================================================================
 
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { C, R } from './theme';
 
@@ -151,69 +151,106 @@ export function useGrabador() {
 
 /** Burbuja de audio con play/pausa y barra de progreso. */
 export function Reproductor({ uri, duracion, claro, mime }) {
-  // El audio se baja al telefono antes de reproducirlo.
+  // El player se crea SIEMPRE con la URL remota, nunca con null.
   //
-  // La URL del servidor es `hub_img.php?f=...`, sin extension en la ruta. iOS
-  // deduce el formato del nombre del archivo, y sin extension no sabe que
-  // esta recibiendo: el reproductor arranca, la barra avanza, y no suena
-  // nada. Con el archivo local y su extension correcta, sabe leerlo.
-  const [local, setLocal] = useState(null);
-  const [falla, setFalla] = useState(null);
+  // useAudioPlayer toma la fuente al crearse: si se le pasa null y despues se
+  // le cambia, el audio no se carga solo. Para cambiarlo hay que usar
+  // replace(), que es lo que se hace mas abajo cuando termina la descarga.
+  const player = hayAudio ? Audio.useAudioPlayer({ uri }) : null;
+  const estado = hayAudio && Audio.useAudioPlayerStatus
+    ? Audio.useAudioPlayerStatus(player)
+    : null;
 
+  const [cargando, setCargando] = useState(false);
+  const [diag, setDiag] = useState({ paso: 'inicio' });
+
+  // Se baja al telefono con su extension correcta.
+  //
+  // La URL del servidor es `hub_img.php?f=...` y no termina en .m4a: iOS
+  // deduce el formato del nombre del archivo, y sin extension no sabe que
+  // esta recibiendo.
   useEffect(() => {
     let vivo = true;
-    if (!uri || !hayAudio) return undefined;
+    if (!uri || !hayAudio || !player) return undefined;
 
     (async () => {
       try {
         const FS = require('expo-file-system');
-        if (!FS || !FS.downloadAsync) { if (vivo) setLocal(uri); return; }
+        if (!FS || !FS.downloadAsync) {
+          if (vivo) setDiag({ paso: 'sin_filesystem' });
+          return;
+        }
 
         const ext = extensionDe(uri, mime);
-        // El nombre sale de la URL: el mismo audio se baja una sola vez.
-        const nombre = `aud_${hash(uri)}.${ext}`;
-        const destino = (FS.cacheDirectory || '') + nombre;
+        const destino = (FS.cacheDirectory || '') + `aud_${hash(uri)}.${ext}`;
 
-        const info = await FS.getInfoAsync(destino);
-        if (!info.exists) await FS.downloadAsync(uri, destino);
-        if (vivo) setLocal(destino);
+        let info = await FS.getInfoAsync(destino);
+        if (!info.exists) {
+          const r = await FS.downloadAsync(uri, destino);
+          if (r.status !== 200) {
+            if (vivo) setDiag({ paso: 'descarga', http: r.status, destino });
+            return;
+          }
+          info = await FS.getInfoAsync(destino);
+        }
+
+        if (!info.exists || !info.size) {
+          if (vivo) setDiag({ paso: 'archivo_vacio', destino });
+          return;
+        }
+
+        // replace() es lo que hace que el player tome el archivo nuevo.
+        if (player.replace) player.replace({ uri: destino });
+        if (vivo) setDiag({ paso: 'listo', destino, bytes: info.size, ext });
       } catch (e) {
-        // Si no se puede bajar, se intenta igual con la URL remota.
-        console.warn('[audio] no pude bajar:', e.message);
-        if (vivo) { setLocal(uri); setFalla(e.message); }
+        if (vivo) setDiag({ paso: 'error', mensaje: e.message });
       }
     })();
 
     return () => { vivo = false; };
-  }, [uri, mime]);
+  }, [uri, mime, player]);
 
-  const player = hayAudio ? Audio.useAudioPlayer(local ? { uri: local } : null) : null;
-  const estado = hayAudio && Audio.useAudioPlayerStatus
-    ? Audio.useAudioPlayerStatus(player)
-    : null;
-  const [cargando, setCargando] = useState(false);
-
-  const listo = !!local;
   const sonando = !!(estado && estado.playing);
   const total = (estado && estado.duration) || duracion || 0;
   const actual = (estado && estado.currentTime) || 0;
   const avance = total > 0 ? Math.min(1, actual / total) : 0;
 
   const alternar = async () => {
-    if (!player || !listo) return;
+    if (!player) return;
     try {
       if (sonando) {
         player.pause();
       } else {
         setCargando(true);
-        // Si termino, volver al principio antes de reproducir.
         if (total && actual >= total - 0.3) await player.seekTo(0);
+        await prepararAudio();       // por si el modo quedo en grabacion
         player.play();
         setCargando(false);
       }
     } catch (e) {
       setCargando(false);
+      setDiag((d) => ({ ...d, reproducir: e.message }));
     }
+  };
+
+  // Mantener apretado cuenta que esta pasando. Sirve para saber si falla la
+  // descarga, el archivo o el reproductor.
+  const explicar = () => {
+    const l = [];
+    l.push(`Paso: ${diag.paso}`);
+    if (diag.http) l.push(`HTTP: ${diag.http}`);
+    if (diag.bytes) l.push(`Tamaño: ${Math.round(diag.bytes / 1024)} KB`);
+    if (diag.ext) l.push(`Formato: .${diag.ext}`);
+    if (diag.mensaje) l.push(`Error: ${diag.mensaje}`);
+    if (diag.reproducir) l.push(`Al reproducir: ${diag.reproducir}`);
+    l.push('');
+    l.push(`Cargado: ${estado && estado.isLoaded ? 'si' : 'no'}`);
+    l.push(`Duración: ${total ? total.toFixed(1) + 's' : 'desconocida'}`);
+    l.push(`Sonando: ${sonando ? 'si' : 'no'}`);
+    l.push(`Volumen: ${player && player.volume !== undefined ? player.volume : '?'}`);
+    l.push('');
+    l.push(`URL: ${String(uri).slice(0, 90)}`);
+    Alert.alert('Diagnóstico del audio', l.join('\n'));
   };
 
   const fg = claro ? '#fff' : C.tealDeep;
@@ -221,7 +258,7 @@ export function Reproductor({ uri, duracion, claro, mime }) {
 
   return (
     <View style={s.audio}>
-      <Pressable onPress={alternar} hitSlop={8} style={[s.play, { backgroundColor: claro ? 'rgba(255,255,255,0.2)' : C.tealSoft }]}>
+      <Pressable onPress={alternar} onLongPress={explicar} hitSlop={8} style={[s.play, { backgroundColor: claro ? 'rgba(255,255,255,0.2)' : C.tealSoft }]}>
         {cargando
           ? <ActivityIndicator size="small" color={fg} />
           : <MaterialIcons name={sonando ? 'pause' : 'play-arrow'} size={22} color={fg} />}
