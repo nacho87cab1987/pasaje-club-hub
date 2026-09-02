@@ -56,7 +56,11 @@ function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
     try {
       setTexto(await onTranscribir(adjunto.id));
     } catch (e) {
-      Alert.alert('No se pudo transcribir', e.message);
+      Alert.alert(
+        'No se pudo transcribir',
+        `${e.message}\n\nAdjunto ${adjunto.id}`
+        + (e.status ? `\nCódigo ${e.status}` : ''),
+      );
     } finally {
       setCargando(false);
     }
@@ -76,18 +80,11 @@ function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
         <Text style={[s.notaTxt, claro && { color: '#fff' }]}>{texto}</Text>
       ) : null}
 
-      {/* Dos salidas, porque iOS no reproduce el formato de WhatsApp:
-          leerla acá, o abrirla con otra app que sí lo soporte. */}
-      <View style={s.notaBotones}>
-        {!texto && !cargando ? (
-          <Pressable onPress={pedir}>
-            <Text style={[s.notaAccion, claro && { color: '#fff' }]}>Leer lo que dice</Text>
-          </Pressable>
-        ) : null}
-        <Pressable onPress={() => abrirArchivo(url, adjunto.nombre_original || 'audio.ogg')}>
-          <Text style={[s.notaAccion, claro && { color: '#fff' }]}>Escuchar en otra app</Text>
+      {!texto && !cargando ? (
+        <Pressable onPress={pedir} style={{ marginTop: 5 }}>
+          <Text style={[s.notaAccion, claro && { color: '#fff' }]}>Leer lo que dice</Text>
         </Pressable>
-      </View>
+      ) : null}
     </View>
   );
 }
