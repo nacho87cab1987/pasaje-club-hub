@@ -58,16 +58,26 @@ function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
     } catch (e) {
       Alert.alert(
         'No se pudo transcribir',
-        `${e.message}\n\nAdjunto ${adjunto.id}`
-        + (e.status ? `\nCódigo ${e.status}` : ''),
+        `${(e && e.message) || String(e)}\n\nAdjunto ${adjunto.id}`
+        + (e && e.status ? `\nCódigo ${e.status}` : ''),
       );
     } finally {
       setCargando(false);
     }
   };
 
+  // Todo el bloque es el area tocable, no solo el texto de abajo.
+  //
+  // Antes el Pressable estaba anidado dentro de la burbuja, que tambien es
+  // tocable, y el toque se lo quedaba la de afuera: no llegaba nunca.
   return (
-    <View style={s.nota}>
+    <Pressable
+      style={s.nota}
+      onPress={pedir}
+      disabled={cargando}
+      // Corta la propagacion hacia la burbuja.
+      onStartShouldSetResponder={() => true}
+    >
       <View style={s.notaTop}>
         <MaterialIcons name="graphic-eq" size={15} color={claro ? '#A9CBD6' : C.ink3} />
         <Text style={[s.notaTit, claro && { color: '#A9CBD6' }]}>
@@ -81,13 +91,11 @@ function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
       ) : null}
 
       {!cargando ? (
-        <Pressable onPress={pedir} style={{ marginTop: 5 }}>
-          <Text style={[s.notaAccion, claro && { color: '#fff' }]}>
-            {texto ? 'Transcribir de nuevo' : 'Leer lo que dice'}
-          </Text>
-        </Pressable>
+        <Text style={[s.notaAccion, claro && { color: '#fff' }, { marginTop: 5 }]}>
+          {texto ? 'Tocá para transcribir de nuevo' : 'Tocá para leer lo que dice'}
+        </Text>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
@@ -311,6 +319,7 @@ export default function CrmChatScreen({ route, navigation }) {
 
   const transcribir = async (adjuntoId) => {
     const r = await crm.transcribir(adjuntoId);
+    if (!r || !r.texto) throw new Error('El servidor no devolvio texto');
     // Se guarda en el mensaje para que quede a la vista sin recargar todo.
     setMensajes((ms) => (ms || []).map((m) => ({
       ...m,
