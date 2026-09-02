@@ -47,14 +47,24 @@ const PALETA = ['#11BCB3', '#072D40', '#790F35', '#D7CA4A', '#185FA5',
  * En vez de mostrar un reproductor que no anda, se ofrece pasarla a texto.
  * La transcripcion queda guardada, asi la proxima vez ya esta.
  */
+/** Deja el texto en una linea limpia, sin saltos ni espacios de sobra. */
+function limpiar(t) {
+  return String(t || '').replace(/\s+/g, ' ').trim();
+}
+
 function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
-  const [texto, setTexto] = useState(adjunto.transcripcion || null);
+  const [texto, setTexto] = useState(limpiar(adjunto.transcripcion) || null);
   const [cargando, setCargando] = useState(false);
+  const [sinTexto, setSinTexto] = useState(false);
 
   const pedir = async () => {
     setCargando(true);
+    setSinTexto(false);
     try {
-      setTexto(await onTranscribir(adjunto.id));
+      // Whisper puede devolver espacios o saltos de linea cuando el audio no
+      // tiene voz. Sin limpiarlo, la burbuja se estira sin mostrar nada.
+      const t = limpiar(await onTranscribir(adjunto.id));
+      if (t) setTexto(t); else setSinTexto(true);
     } catch (e) {
       Alert.alert(
         'No se pudo transcribir',
@@ -88,6 +98,12 @@ function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
 
       {texto ? (
         <Text style={[s.notaTxt, claro && { color: '#fff' }]}>{texto}</Text>
+      ) : null}
+
+      {sinTexto ? (
+        <Text style={[s.notaVacio, claro && { color: '#A9CBD6' }]}>
+          No se entendió nada en el audio.
+        </Text>
       ) : null}
 
       {!cargando ? (
@@ -906,10 +922,12 @@ const s = StyleSheet.create({
   suya: { backgroundColor: '#fff', borderBottomLeftRadius: 4 },
   msg: { fontSize: 14.5, lineHeight: 20, color: C.ink },
   pie: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, paddingHorizontal: 4 },
-  nota: { paddingVertical: 4, minWidth: 168 },
+  // maxWidth para que un texto largo no empuje la burbuja fuera de pantalla.
+  nota: { paddingVertical: 4, minWidth: 168, maxWidth: 250 },
   notaTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   notaTit: { fontSize: 11.5, fontWeight: '700', color: C.ink3 },
   notaTxt: { fontSize: 14.5, color: C.ink, marginTop: 5, lineHeight: 20 },
+  notaVacio: { fontSize: 13, color: C.ink3, marginTop: 5, fontStyle: 'italic' },
   notaAccion: { fontSize: 12.5, color: C.tealDeep, fontWeight: '600' },
   notaBotones: { flexDirection: 'row', gap: 14, marginTop: 6, flexWrap: 'wrap' },
   hora: { fontSize: 10.5, color: C.ink3 },
