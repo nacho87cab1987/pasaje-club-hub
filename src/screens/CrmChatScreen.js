@@ -62,33 +62,33 @@ function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
     }
   };
 
-  if (texto) {
-    return (
-      <View style={s.nota}>
-        <View style={s.notaTop}>
-          <MaterialIcons name="graphic-eq" size={14} color={claro ? '#A9CBD6' : C.ink3} />
-          <Text style={[s.notaTit, claro && { color: '#A9CBD6' }]}>Nota de voz</Text>
-        </View>
-        <Text style={[s.notaTxt, claro && { color: '#fff' }]}>{texto}</Text>
-      </View>
-    );
-  }
-
   return (
-    <Pressable style={s.nota} onPress={pedir} disabled={cargando}>
+    <View style={s.nota}>
       <View style={s.notaTop}>
-        <MaterialIcons name="graphic-eq" size={16} color={claro ? '#A9CBD6' : C.ink3} />
+        <MaterialIcons name="graphic-eq" size={15} color={claro ? '#A9CBD6' : C.ink3} />
         <Text style={[s.notaTit, claro && { color: '#A9CBD6' }]}>
           {cargando ? 'Transcribiendo…' : 'Nota de voz'}
         </Text>
         {cargando ? <ActivityIndicator size="small" color={claro ? '#fff' : C.tealDeep} /> : null}
       </View>
-      {!cargando ? (
-        <Text style={[s.notaAccion, claro && { color: '#fff' }]}>
-          Tocá para leer lo que dice
-        </Text>
+
+      {texto ? (
+        <Text style={[s.notaTxt, claro && { color: '#fff' }]}>{texto}</Text>
       ) : null}
-    </Pressable>
+
+      {/* Dos salidas, porque iOS no reproduce el formato de WhatsApp:
+          leerla acá, o abrirla con otra app que sí lo soporte. */}
+      <View style={s.notaBotones}>
+        {!texto && !cargando ? (
+          <Pressable onPress={pedir}>
+            <Text style={[s.notaAccion, claro && { color: '#fff' }]}>Leer lo que dice</Text>
+          </Pressable>
+        ) : null}
+        <Pressable onPress={() => abrirArchivo(url, adjunto.nombre_original || 'audio.ogg')}>
+          <Text style={[s.notaAccion, claro && { color: '#fff' }]}>Escuchar en otra app</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -901,7 +901,8 @@ const s = StyleSheet.create({
   notaTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   notaTit: { fontSize: 11.5, fontWeight: '700', color: C.ink3 },
   notaTxt: { fontSize: 14.5, color: C.ink, marginTop: 5, lineHeight: 20 },
-  notaAccion: { fontSize: 12.5, color: C.tealDeep, marginTop: 3, fontWeight: '600' },
+  notaAccion: { fontSize: 12.5, color: C.tealDeep, fontWeight: '600' },
+  notaBotones: { flexDirection: 'row', gap: 14, marginTop: 6, flexWrap: 'wrap' },
   hora: { fontSize: 10.5, color: C.ink3 },
   nota: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: '#FAEEDA',
