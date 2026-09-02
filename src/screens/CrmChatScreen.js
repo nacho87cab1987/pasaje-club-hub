@@ -82,32 +82,32 @@ function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
   // tocable, y el toque se lo quedaba la de afuera: no llegaba nunca.
   return (
     <Pressable
-      style={s.nota}
+      style={s.voz}
       onPress={pedir}
       disabled={cargando}
       // Corta la propagacion hacia la burbuja.
       onStartShouldSetResponder={() => true}
     >
-      <View style={s.notaTop}>
+      <View style={s.vozTop}>
         <MaterialIcons name="graphic-eq" size={15} color={claro ? '#A9CBD6' : C.ink3} />
-        <Text style={[s.notaTit, claro && { color: '#A9CBD6' }]}>
+        <Text style={[s.vozTit, claro && { color: '#A9CBD6' }]}>
           {cargando ? 'Transcribiendo…' : 'Nota de voz'}
         </Text>
         {cargando ? <ActivityIndicator size="small" color={claro ? '#fff' : C.tealDeep} /> : null}
       </View>
 
       {texto ? (
-        <Text style={[s.notaTxt, claro && { color: '#fff' }]}>{texto}</Text>
+        <Text style={[s.vozTxt, claro && { color: '#fff' }]}>{texto}</Text>
       ) : null}
 
       {sinTexto ? (
-        <Text style={[s.notaVacio, claro && { color: '#A9CBD6' }]}>
+        <Text style={[s.vozVacio, claro && { color: '#A9CBD6' }]}>
           No se entendió nada en el audio.
         </Text>
       ) : null}
 
       {!cargando ? (
-        <Text style={[s.notaAccion, claro && { color: '#fff' }, { marginTop: 5 }]}>
+        <Text style={[s.vozAccion, claro && { color: '#fff' }, { marginTop: 5 }]}>
           {texto ? 'Tocá para transcribir de nuevo' : 'Tocá para leer lo que dice'}
         </Text>
       ) : null}
@@ -923,13 +923,16 @@ const s = StyleSheet.create({
   msg: { fontSize: 14.5, lineHeight: 20, color: C.ink },
   pie: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, paddingHorizontal: 4 },
   // maxWidth para que un texto largo no empuje la burbuja fuera de pantalla.
-  nota: { paddingVertical: 4, minWidth: 168, maxWidth: 250 },
-  notaTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  notaTit: { fontSize: 11.5, fontWeight: '700', color: C.ink3 },
-  notaTxt: { fontSize: 14.5, color: C.ink, marginTop: 5, lineHeight: 20 },
-  notaVacio: { fontSize: 13, color: C.ink3, marginTop: 5, fontStyle: 'italic' },
-  notaAccion: { fontSize: 12.5, color: C.tealDeep, fontWeight: '600' },
-  notaBotones: { flexDirection: 'row', gap: 14, marginTop: 6, flexWrap: 'wrap' },
+  // Nombres propios: 'nota' y 'notaTxt' ya existian para las notas internas
+  // del vendedor, y la segunda definicion pisaba a la primera. El texto de la
+  // transcripcion terminaba del color de las notas -crema sobre crema- y no
+  // se veia, aunque estuviera ahi.
+  voz: { paddingVertical: 4, minWidth: 168, maxWidth: 250 },
+  vozTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  vozTit: { fontSize: 11.5, fontWeight: '700', color: C.ink3 },
+  vozTxt: { fontSize: 14.5, color: C.ink, marginTop: 6, lineHeight: 20 },
+  vozVacio: { fontSize: 13, color: C.ink3, marginTop: 5, fontStyle: 'italic' },
+  vozAccion: { fontSize: 12.5, color: C.tealDeep, fontWeight: '600' },
   hora: { fontSize: 10.5, color: C.ink3 },
   nota: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: '#FAEEDA',

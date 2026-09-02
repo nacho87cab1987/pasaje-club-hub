@@ -95,13 +95,13 @@ export default function PostScreen({ route }) {
                 tam={38}
               />
               <View style={{ flex: 1 }}>
-                <Text style={s.autor}>{post.autor || 'Pasaje Club'}</Text>
+                <Text style={s.postAutor}>{post.autor || 'Pasaje Club'}</Text>
                 <Text style={s.fecha}>{cuando(post.creado_el)}</Text>
               </View>
             </View>
 
             {post.titulo ? <Text style={s.titulo}>{post.titulo}</Text> : null}
-            {post.cuerpo ? <Text style={s.cuerpo}>{post.cuerpo}</Text> : null}
+            {post.cuerpo ? <Text style={s.postCuerpo}>{post.cuerpo}</Text> : null}
 
             {post.media && post.media.length ? (
               <View style={s.media}>
@@ -194,10 +194,10 @@ export default function PostScreen({ route }) {
 const s = StyleSheet.create({
   post: { paddingBottom: 6 },
   postTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  autor: { fontSize: 14.5, fontWeight: '700', color: C.ink },
+  postAutor: { fontSize: 14.5, fontWeight: '700', color: C.ink },
   fecha: { fontSize: 11.5, color: C.ink3, marginTop: 1 },
   titulo: { fontSize: 16, fontWeight: '700', color: C.ink, marginBottom: 6, lineHeight: 22 },
-  cuerpo: { fontSize: 15, color: C.ink, lineHeight: 22 },
+  postCuerpo: { fontSize: 15, color: C.ink, lineHeight: 22 },
   media: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 12 },
   mediaSola: { width: '100%', height: 220, borderRadius: R.md, overflow: 'hidden' },
   mediaChica: { width: '48%', height: 130, borderRadius: R.md, overflow: 'hidden' },
