@@ -193,6 +193,10 @@ export function crmApi(credencial) {
     // Derivar: el admin usa 'reasignar', la supervisora 'reasignar_equipo'.
     // llamar() reintenta con la variante correcta segun la credencial.
     transcribir: (adjunto_id) => llamar('transcribir', 'POST', { adjunto_id }),
+    // La conversion vive en otro archivo: no pasa por el ruteo admin/vendedor
+    // de crm_conversaciones.php.
+    convertirAudio: (adjunto_id) =>
+      api.post('crm_audio.php', 'convertir', { adjunto_id }, null, { timeout: 60000 }),
     derivar:   (id, vendedor_id) =>
       llamar(admin ? 'reasignar' : 'reasignar_equipo', 'POST', { id, vendedor_id }),
     estado:    (id, estado, prioridad) => llamar('cambiar_estado', 'POST', { id, estado, prioridad }),

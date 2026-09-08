@@ -52,48 +52,60 @@ function limpiar(t) {
   return String(t || '').replace(/\s+/g, ' ').trim();
 }
 
-function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
+/**
+ * Una nota de voz de WhatsApp, que iOS no reproduce como viene.
+ *
+ * Dos salidas: convertirla -el servidor la pasa a m4a y ahi suena- o leerla
+ * transcripta. Convertir es lo que uno espera de una nota de voz, asi que va
+ * primero; la transcripcion queda para cuando no se puede escuchar.
+ */
+function NotaDeVoz({ adjunto, url, claro, onTranscribir, onConvertir }) {
   const [texto, setTexto] = useState(limpiar(adjunto.transcripcion) || null);
-  const [cargando, setCargando] = useState(false);
   const [sinTexto, setSinTexto] = useState(false);
+  const [haciendo, setHaciendo] = useState(null);   // 'convertir' | 'leer'
 
-  const pedir = async () => {
-    setCargando(true);
-    setSinTexto(false);
+  const convertir = async () => {
+    setHaciendo('convertir');
     try {
-      // Whisper puede devolver espacios o saltos de linea cuando el audio no
-      // tiene voz. Sin limpiarlo, la burbuja se estira sin mostrar nada.
-      const t = limpiar(await onTranscribir(adjunto.id));
-      if (t) setTexto(t); else setSinTexto(true);
+      await onConvertir(adjunto.id);
+      // Al volver, el mensaje ya tiene convertido_path y el chat dibuja el
+      // reproductor en lugar de esta tarjeta.
     } catch (e) {
       Alert.alert(
-        'No se pudo transcribir',
-        `${(e && e.message) || String(e)}\n\nAdjunto ${adjunto.id}`
-        + (e && e.status ? `\nCódigo ${e.status}` : ''),
+        'No se pudo convertir',
+        `${(e && e.message) || String(e)}\n\n`
+        + 'Podés leer la transcripción mientras tanto.',
       );
     } finally {
-      setCargando(false);
+      setHaciendo(null);
     }
   };
 
-  // Todo el bloque es el area tocable, no solo el texto de abajo.
-  //
-  // Antes el Pressable estaba anidado dentro de la burbuja, que tambien es
-  // tocable, y el toque se lo quedaba la de afuera: no llegaba nunca.
+  const leer = async () => {
+    setHaciendo('leer');
+    setSinTexto(false);
+    try {
+      const t = limpiar(await onTranscribir(adjunto.id));
+      if (t) setTexto(t); else setSinTexto(true);
+    } catch (e) {
+      Alert.alert('No se pudo transcribir', (e && e.message) || String(e));
+    } finally {
+      setHaciendo(null);
+    }
+  };
+
   return (
-    <Pressable
-      style={s.voz}
-      onPress={pedir}
-      disabled={cargando}
-      // Corta la propagacion hacia la burbuja.
-      onStartShouldSetResponder={() => true}
-    >
+    <View style={s.voz}>
       <View style={s.vozTop}>
         <MaterialIcons name="graphic-eq" size={15} color={claro ? '#A9CBD6' : C.ink3} />
         <Text style={[s.vozTit, claro && { color: '#A9CBD6' }]}>
-          {cargando ? 'Transcribiendo…' : 'Nota de voz'}
+          {haciendo === 'convertir' ? 'Preparando el audio…'
+            : haciendo === 'leer' ? 'Transcribiendo…'
+            : 'Nota de voz'}
         </Text>
-        {cargando ? <ActivityIndicator size="small" color={claro ? '#fff' : C.tealDeep} /> : null}
+        {haciendo ? (
+          <ActivityIndicator size="small" color={claro ? '#fff' : C.tealDeep} />
+        ) : null}
       </View>
 
       {texto ? (
@@ -106,12 +118,19 @@ function NotaDeVoz({ adjunto, url, claro, onTranscribir }) {
         </Text>
       ) : null}
 
-      {!cargando ? (
-        <Text style={[s.vozAccion, claro && { color: '#fff' }, { marginTop: 5 }]}>
-          {texto ? 'Tocá para transcribir de nuevo' : 'Tocá para leer lo que dice'}
-        </Text>
+      {!haciendo ? (
+        <View style={s.vozBotones}>
+          <Pressable onPress={convertir} hitSlop={6}>
+            <Text style={[s.vozAccion, claro && { color: '#fff' }]}>Escuchar</Text>
+          </Pressable>
+          {!texto ? (
+            <Pressable onPress={leer} hitSlop={6}>
+              <Text style={[s.vozAccion, claro && { color: '#fff' }]}>Leer</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 
@@ -346,6 +365,25 @@ export default function CrmChatScreen({ route, navigation }) {
     return r.texto;
   };
 
+  /**
+   * Pide la conversion del audio y actualiza el mensaje en el lugar.
+   *
+   * La primera vez tarda unos segundos -el archivo va y vuelve del
+   * conversor-; despues queda guardado y suena al instante.
+   */
+  const convertirAudio = async (adjuntoId) => {
+    const r = await crm.convertirAudio(adjuntoId);
+    if (!r || !r.convertido) throw new Error('No se pudo convertir');
+
+    setMensajes((ms) => (ms || []).map((m) => ({
+      ...m,
+      adjuntos: (m.adjuntos || []).map((a) => (
+        a.id === adjuntoId ? { ...a, convertido_path: r.convertido } : a
+      )),
+    })));
+    return r.convertido;
+  };
+
   const menuPrincipal = () => {
     const cliente = conv
       ? `${conv.cliente_nombre || ''} ${conv.cliente_apellido || ''}`.trim()
@@ -517,6 +555,17 @@ export default function CrmChatScreen({ route, navigation }) {
                     );
                   }
                   if (a.tipo === 'audio') {
+                    // Si ya esta convertido, es un m4a normal y suena.
+                    if (a.convertido_path) {
+                      return (
+                        <Reproductor
+                          key={a.id}
+                          uri={imagenUrl(a.convertido_path)}
+                          mime="audio/mp4"
+                          claro={mio}
+                        />
+                      );
+                    }
                     // Se lista lo que iOS SI reproduce, en vez de intentar
                     // adivinar lo que no.
                     //
@@ -534,6 +583,7 @@ export default function CrmChatScreen({ route, navigation }) {
                           url={url}
                           claro={mio}
                           onTranscribir={transcribir}
+                          onConvertir={convertirAudio}
                         />
                       );
                     }
@@ -932,7 +982,8 @@ const s = StyleSheet.create({
   vozTit: { fontSize: 11.5, fontWeight: '700', color: C.ink3 },
   vozTxt: { fontSize: 14.5, color: C.ink, marginTop: 6, lineHeight: 20 },
   vozVacio: { fontSize: 13, color: C.ink3, marginTop: 5, fontStyle: 'italic' },
-  vozAccion: { fontSize: 12.5, color: C.tealDeep, fontWeight: '600' },
+  vozAccion: { fontSize: 13, color: C.tealDeep, fontWeight: '700' },
+  vozBotones: { flexDirection: 'row', gap: 18, marginTop: 7 },
   hora: { fontSize: 10.5, color: C.ink3 },
   nota: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: '#FAEEDA',
