@@ -53,6 +53,63 @@ function limpiar(t) {
 }
 
 /**
+ * Un audio que ya se puede escuchar, con la opcion de leerlo tambien.
+ *
+ * Poder escucharlo no quita las ganas de leerlo: a veces uno esta en un lugar
+ * donde no puede poner audio, o quiere buscar un dato puntual sin volver a
+ * escuchar dos minutos. Antes, al convertirse el audio, la tarjeta se
+ * reemplazaba por el reproductor y la transcripcion dejaba de estar
+ * disponible.
+ */
+function AudioConTexto({ adjunto, claro, onTranscribir }) {
+  const [texto, setTexto] = useState(limpiar(adjunto.transcripcion) || null);
+  const [leyendo, setLeyendo] = useState(false);
+  const [sinTexto, setSinTexto] = useState(false);
+
+  const leer = async () => {
+    setLeyendo(true);
+    setSinTexto(false);
+    try {
+      const t = limpiar(await onTranscribir(adjunto.id));
+      if (t) setTexto(t); else setSinTexto(true);
+    } catch (e) {
+      Alert.alert('No se pudo transcribir', (e && e.message) || String(e));
+    } finally {
+      setLeyendo(false);
+    }
+  };
+
+  return (
+    <View>
+      <Reproductor
+        uri={imagenUrl(adjunto.convertido_path)}
+        mime="audio/mp4"
+        claro={claro}
+      />
+
+      {texto ? (
+        <Text style={[s.vozTxt, claro && { color: '#fff' }]}>{texto}</Text>
+      ) : null}
+
+      {sinTexto ? (
+        <Text style={[s.vozVacio, claro && { color: '#A9CBD6' }]}>
+          No se entendió nada en el audio.
+        </Text>
+      ) : null}
+
+      {!texto && !sinTexto ? (
+        <Pressable onPress={leer} disabled={leyendo} hitSlop={6} style={{ marginTop: 4 }}>
+          <Text style={[s.vozAccion, claro && { color: '#fff' }]}>
+            {leyendo ? 'Transcribiendo…' : 'Leer lo que dice'}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+
+/**
  * Una nota de voz de WhatsApp, que iOS no reproduce como viene.
  *
  * Dos salidas: convertirla -el servidor la pasa a m4a y ahi suena- o leerla
@@ -558,11 +615,11 @@ export default function CrmChatScreen({ route, navigation }) {
                     // Si ya esta convertido, es un m4a normal y suena.
                     if (a.convertido_path) {
                       return (
-                        <Reproductor
+                        <AudioConTexto
                           key={a.id}
-                          uri={imagenUrl(a.convertido_path)}
-                          mime="audio/mp4"
+                          adjunto={a}
                           claro={mio}
+                          onTranscribir={transcribir}
                         />
                       );
                     }
