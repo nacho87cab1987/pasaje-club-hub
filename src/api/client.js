@@ -431,6 +431,10 @@ export const gestion = {
   eliminar:  (tarea_id)    => api.post('hub_gestion.php', 'eliminar', { tarea_id }),
 };
 
+export const tarjeta = {
+  mia: () => api.get('hub_tarjeta.php', 'mi_tarjeta'),
+};
+
 export const perfil = {
   mio:        ()        => api.get('hub_perfil.php', 'mi_perfil'),
   guardar:    (datos)   => api.post('hub_perfil.php', 'guardar', datos),

@@ -136,6 +136,19 @@ export default function PerfilScreen({ navigation }) {
         <Text style={s.probarVibraTxt}>Diagnostico del telefono</Text>
       </Pressable>
 
+      {/* Para ferias y eventos: el QR agenda tu contacto en el telefono de
+          quien lo escanea, sin que tenga que anotarlo. */}
+      <Pressable style={s.tarjetaBtn} onPress={() => navigation.navigate('MiTarjeta')}>
+        <MaterialIcons name="qr-code-2" size={22} color={C.tealDeep} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.tarjetaTit}>Mi tarjeta de contacto</Text>
+          <Text style={s.tarjetaSub}>
+            Un QR para que te agenden en ferias y eventos
+          </Text>
+        </View>
+        <MaterialIcons name="chevron-right" size={19} color={C.ink3} />
+      </Pressable>
+
       <Text style={s.version}>Pasaje Club · version 1.0.0</Text>
       </View>
     </ScrollView>
@@ -199,5 +212,11 @@ const s = StyleSheet.create({
     paddingVertical: 12, marginTop: 10,
   },
   probarVibraTxt: { fontSize: 13, color: C.ink3 },
+  tarjetaBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff',
+    borderRadius: R.md, padding: 13, marginTop: 10,
+  },
+  tarjetaTit: { fontSize: 14.5, fontWeight: '600', color: C.ink },
+  tarjetaSub: { fontSize: 11.5, color: C.ink3, marginTop: 2 },
   version: { textAlign: 'center', color: C.ink3, fontSize: 12.5, marginTop: 22 },
 });
