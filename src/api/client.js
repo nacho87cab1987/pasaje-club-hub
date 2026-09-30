@@ -431,6 +431,14 @@ export const gestion = {
   eliminar:  (tarea_id)    => api.post('hub_gestion.php', 'eliminar', { tarea_id }),
 };
 
+export const postventa = {
+  agenda:      (params) => api.get('hub_postventa.php', 'agenda', params),
+  salida:      (id)     => api.get('hub_postventa.php', 'salida', { id }),
+  avisos:      (sinLeer) => api.get('hub_postventa.php', 'avisos',
+                                    sinLeer ? { sin_leer: 1 } : {}),
+  marcarVisto: (id)     => api.post('hub_postventa.php', 'marcar_visto', { id }),
+};
+
 export const tarjeta = {
   mia: () => api.get('hub_tarjeta.php', 'mi_tarjeta'),
 };
