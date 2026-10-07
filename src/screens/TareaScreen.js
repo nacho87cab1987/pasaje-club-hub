@@ -306,7 +306,7 @@ export default function TareaScreen({ route, navigation }) {
           style={s.input}
           value={texto}
           onChangeText={setTexto}
-          placeholder="Escribi un comentario"
+          placeholder="Escribí un comentario · @ para nombrar a alguien"
           placeholderTextColor={C.ink3}
           multiline
         />
