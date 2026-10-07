@@ -31,6 +31,8 @@ export default function TareaScreen({ route, navigation }) {
   const [data, setData] = useState(null);
   const ctx = usarPosicionToque();
   const [nuevaSub, setNuevaSub] = useState('');
+  // Las sugerencias del @: null cuando no se esta escribiendo una mencion.
+  const [mencion, setMencion] = useState(null);
   const [error, setError] = useState(null);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -126,12 +128,50 @@ export default function TareaScreen({ route, navigation }) {
     }
   };
 
+  /**
+   * Mira si el cursor esta dentro de una mencion y arma las sugerencias.
+   *
+   * Se busca el ultimo @ antes del cursor y se toma lo que sigue. Si ya hay
+   * un espacio despues de ese @, la mencion se dio por terminada y no se
+   * sugiere mas: asi escribir "mandame un mail a juan@" no abre la lista.
+   */
+  const alEscribir = (t) => {
+    setTexto(t);
+
+    const corte = t.lastIndexOf('@');
+    if (corte < 0) { setMencion(null); return; }
+
+    // El @ tiene que estar al principio o despues de un espacio: un mail
+    // como juan@pasajeclub no es una mencion.
+    const anterior = corte > 0 ? t[corte - 1] : ' ';
+    if (anterior !== ' ' && anterior !== '\n') { setMencion(null); return; }
+
+    const escrito = t.slice(corte + 1);
+    if (escrito.includes(' ') || escrito.includes('\n')) { setMencion(null); return; }
+
+    const gente = (data?.mencionables || []).filter((u) => (
+      !escrito || String(u.nombre).toLowerCase().includes(escrito.toLowerCase())
+    ));
+
+    setMencion(gente.length ? { desde: corte, escrito, gente } : null);
+  };
+
+  const elegirMencion = (u) => {
+    // Se reemplaza lo escrito despues del @ por el nombre completo, para que
+    // el servidor lo resuelva sin ambiguedad.
+    const antes = texto.slice(0, mencion.desde);
+    setTexto(`${antes}@${u.nombre} `);
+    setMencion(null);
+    vibrar();
+  };
+
   const comentar = async () => {
     const t = texto.trim();
     if (!t) return;
     setEnviando(true);
     try {
       await gestion.comentar(id, t);
+      setMencion(null);
       setTexto('');
       await cargar();
     } catch (e) {
@@ -301,11 +341,34 @@ export default function TareaScreen({ route, navigation }) {
         )}
       </ScrollView>
 
+      {/* Las sugerencias van ARRIBA del campo, no abajo: con el teclado
+          abierto, cualquier cosa debajo queda tapada. */}
+      {mencion ? (
+        <View style={s.mencionCaja}>
+          <ScrollView keyboardShouldPersistTaps="always" style={{ maxHeight: 180 }}>
+            {mencion.gente.map((u, i) => (
+              <Pressable
+                key={u.id}
+                style={[s.mencionItem, i < mencion.gente.length - 1 && s.borde]}
+                onPress={() => elegirMencion(u)}
+              >
+                <Avatar
+                  persona={{ foto: u.avatar_url }}
+                  texto={iniciales(...String(u.nombre).split(' '))}
+                  tam={28}
+                />
+                <Text style={s.mencionN}>{u.nombre}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
       <View style={s.barra}>
         <TextInput
           style={s.input}
           value={texto}
-          onChangeText={setTexto}
+          onChangeText={alEscribir}
           placeholder="Escribí un comentario · @ para nombrar a alguien"
           placeholderTextColor={C.ink3}
           multiline
@@ -369,6 +432,16 @@ const s = StyleSheet.create({
   comAutor: { fontSize: 12.5, fontWeight: '700', color: C.ink, marginBottom: 3 },
   comTxt: { fontSize: 14, lineHeight: 20, color: C.ink },
   comHora: { fontSize: 10.5, color: C.ink3, marginTop: 3, marginLeft: 4 },
+  mencionCaja: {
+    backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line,
+    shadowColor: '#072D40', shadowOpacity: 0.1, shadowRadius: 10,
+    shadowOffset: { width: 0, height: -3 }, elevation: 8,
+  },
+  mencionItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 10,
+  },
+  mencionN: { fontSize: 14.5, color: C.ink, fontWeight: '500' },
   barra: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 9, padding: 11,
     backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line,
