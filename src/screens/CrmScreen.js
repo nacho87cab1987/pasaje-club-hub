@@ -21,6 +21,43 @@ const COLOR_CANAL = {
   email: '#7F77DD',
 };
 
+/**
+ * La hora de un mensaje, para mostrar dentro del chat.
+ *
+ * Distinto de cuando(): ahi alcanza con "hace 3 h" porque lo que importa es
+ * cual conversacion esta mas fresca. Adentro del chat se quiere saber a que
+ * hora se dijo cada cosa, sobre todo cuando hay que reconstruir una charla
+ * con un cliente.
+ *
+ * Los mensajes viejos llevan tambien la fecha: "14/10 · 09:32".
+ */
+export function horaMensaje(iso) {
+  if (!iso) return '';
+  const d = new Date(String(iso).replace(' ', 'T'));
+  if (isNaN(d)) return '';
+
+  const hora = d.toLocaleTimeString('es-AR', {
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+
+  const hoy = new Date();
+  const mismoDia = d.getDate() === hoy.getDate()
+                && d.getMonth() === hoy.getMonth()
+                && d.getFullYear() === hoy.getFullYear();
+  if (mismoDia) return hora;
+
+  const ayer = new Date(hoy);
+  ayer.setDate(hoy.getDate() - 1);
+  const esAyer = d.getDate() === ayer.getDate()
+              && d.getMonth() === ayer.getMonth()
+              && d.getFullYear() === ayer.getFullYear();
+  if (esAyer) return `ayer · ${hora}`;
+
+  const fecha = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+  return `${fecha} · ${hora}`;
+}
+
+
 export function cuando(iso) {
   if (!iso) return '';
   const d = new Date(String(iso).replace(' ', 'T'));

@@ -15,7 +15,7 @@ import { Cargando, ErrorBox, Tag } from '../components/UI';
 import { ordenEstados, estadoDe, cargarEstados, hayCatalogo } from '../estados';
 import { useGrabador, Reproductor, hayAudio, segundos } from '../audio';
 import { C, R } from '../theme';
-import { cuando } from './CrmScreen';
+import { horaMensaje } from './CrmScreen';
 
 
 
@@ -653,7 +653,7 @@ export default function CrmChatScreen({ route, navigation }) {
                 ) : null}
               </View>
               <View style={s.pie}>
-                <Text style={s.hora}>{cuando(item.creado_el)}</Text>
+                <Text style={s.hora}>{horaMensaje(item.creado_el)}</Text>
                 {mio && item.wa_status ? (
                   <MaterialIcons
                     name={item.wa_status === 'read' ? 'done-all'
