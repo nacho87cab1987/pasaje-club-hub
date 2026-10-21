@@ -344,6 +344,7 @@ export const comisiones = {
 };
 
 export const expedientes = {
+  enlaceDoc: (id) => api.get('hub_expedientes.php', 'bajar', { id }),
   mis:     (params) => api.get('hub_expedientes.php', 'mis', params),
   de:      (vendedor_id, params) => api.get('hub_expedientes.php', 'de', { vendedor_id, ...(params || {}) }),
   detalle: (id)     => api.get('hub_expedientes.php', 'detalle', { id }),

@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { expedientes, gestion, API, getToken } from '../api/client';
+import { expedientes, gestion } from '../api/client';
 import { abrirArchivo } from '../archivos';
 import { Cargando, ErrorBox, Card } from '../components/UI';
 import { C, R, sombra } from '../theme';
@@ -66,16 +66,18 @@ export default function ExpedienteScreen({ route, navigation }) {
   }, [e, navigation]);
 
   /**
-   * Baja el documento y lo abre con el visor del telefono.
+   * Abre un documento del expediente.
    *
-   * El archivo no se sirve desde su carpeta sino por el API, que verifica el
-   * permiso en cada descarga: el enlace solo no alcanza para bajarlo.
+   * El enlace se pide al tocar, no al cargar la pantalla: viene firmado y
+   * vence a los diez minutos, asi que uno generado al abrir la ficha ya
+   * estaria vencido cuando alguien lo toque.
    */
   const abrirDoc = async (d) => {
     setBajando(d.id);
     try {
-      await abrirArchivo(`${API}/${d.url}&ver=1&_token=${encodeURIComponent(getToken() || '')}`,
-                         d.titulo || 'documento');
+      const r = await expedientes.enlaceDoc(d.id);
+      if (!r || !r.enlace) throw new Error('El servidor no devolvio el enlace');
+      await abrirArchivo(r.enlace, d.titulo || 'documento');
     } catch (err) {
       Alert.alert('No se pudo abrir', err.message);
     } finally {
