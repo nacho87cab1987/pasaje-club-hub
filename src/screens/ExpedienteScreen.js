@@ -5,6 +5,8 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { expedientes, gestion } from '../api/client';
 import { abrirArchivo } from '../archivos';
+import VisorImagen from '../VisorImagen';
+import * as WebBrowser from 'expo-web-browser';
 import { Cargando, ErrorBox, Card } from '../components/UI';
 import { C, R, sombra } from '../theme';
 
@@ -48,6 +50,7 @@ export default function ExpedienteScreen({ route, navigation }) {
   const [e, setE] = useState(null);
   const [error, setError] = useState(null);
   const [bajando, setBajando] = useState(null);
+  const [viendo, setViendo] = useState(null);
   const [tareas, setTareas] = useState(null);
 
   const cargar = useCallback(async () => {
@@ -66,20 +69,55 @@ export default function ExpedienteScreen({ route, navigation }) {
   }, [e, navigation]);
 
   /**
-   * Abre un documento del expediente.
+   * Muestra un documento sin salir de la app.
    *
-   * El enlace se pide al tocar, no al cargar la pantalla: viene firmado y
-   * vence a los diez minutos, asi que uno generado al abrir la ficha ya
-   * estaria vencido cuando alguien lo toque.
+   * Las imagenes van al visor de siempre, los PDF al navegador interno. En
+   * los dos casos se ve primero y despues se decide si guardarlo: mandar todo
+   * al menu del sistema obliga a descargar un archivo para saber si era el
+   * que uno buscaba.
+   *
+   * El enlace se pide al tocar y no al cargar la pantalla: viene firmado y
+   * vence a los diez minutos.
    */
   const abrirDoc = async (d) => {
     setBajando(d.id);
     try {
       const r = await expedientes.enlaceDoc(d.id);
       if (!r || !r.enlace) throw new Error('El servidor no devolvio el enlace');
-      await abrirArchivo(r.enlace, d.titulo || 'documento');
+
+      const ext = String(d.extension || '').toLowerCase();
+
+      if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
+        setViendo({ uri: r.enlace, nombre: d.titulo || 'Documento' });
+
+      } else if (ext === 'pdf') {
+        await WebBrowser.openBrowserAsync(r.enlace, {
+          toolbarColor: C.navy,
+          controlsColor: '#fff',
+          // Para que el boton diga "Listo" y no "Cerrar".
+          dismissButtonStyle: 'done',
+        });
+
+      } else {
+        // Word, Excel y companía: el telefono no los muestra, se descargan.
+        await abrirArchivo(r.enlace, d.titulo || 'documento');
+      }
     } catch (err) {
       Alert.alert('No se pudo abrir', err.message);
+    } finally {
+      setBajando(null);
+    }
+  };
+
+  /** Guardar o compartir, sin pasar por la vista previa. */
+  const guardarDoc = async (d) => {
+    setBajando(d.id);
+    try {
+      const r = await expedientes.enlaceDoc(d.id, 'd');
+      if (!r || !r.enlace) throw new Error('El servidor no devolvio el enlace');
+      await abrirArchivo(r.enlace, d.titulo || 'documento');
+    } catch (err) {
+      Alert.alert('No se pudo descargar', err.message);
     } finally {
       setBajando(null);
     }
@@ -93,6 +131,7 @@ export default function ExpedienteScreen({ route, navigation }) {
   const urgente = e.opcion_dias !== null && e.opcion_dias <= 3 && e.estado !== 'cancelado';
 
   return (
+    <>
     <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 14, paddingBottom: 34 }}>
       {urgente ? (
         <View style={s.alerta}>
@@ -242,9 +281,13 @@ export default function ExpedienteScreen({ route, navigation }) {
                       .filter(Boolean).join(' · ')}
                   </Text>
                 </View>
-                {bajando === d.id
-                  ? <ActivityIndicator size="small" color={C.tealDeep} />
-                  : <MaterialIcons name="file-download" size={20} color={C.ink3} />}
+                {bajando === d.id ? (
+                  <ActivityIndicator size="small" color={C.tealDeep} />
+                ) : (
+                  <Pressable onPress={() => guardarDoc(d)} hitSlop={12}>
+                    <MaterialIcons name="file-download" size={20} color={C.ink3} />
+                  </Pressable>
+                )}
               </Pressable>
             ))}
           </Card>
@@ -305,6 +348,14 @@ export default function ExpedienteScreen({ route, navigation }) {
         Para cargar pagos, pasajeros o servicios, entra desde el panel web.
       </Text>
     </ScrollView>
+
+      <VisorImagen
+        visible={!!viendo}
+        uri={viendo?.uri}
+        nombre={viendo?.nombre}
+        onCerrar={() => setViendo(null)}
+      />
+    </>
   );
 }
 
