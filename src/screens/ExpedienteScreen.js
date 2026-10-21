@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import {
+  View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator,
+} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { expedientes, gestion } from '../api/client';
+import { expedientes, gestion, API, getToken } from '../api/client';
+import { abrirArchivo } from '../archivos';
 import { Cargando, ErrorBox, Card } from '../components/UI';
 import { C, R, sombra } from '../theme';
 
@@ -22,10 +25,29 @@ function fechaLarga(iso) {
 const plata = (n, mon) =>
   `${mon || 'USD'} ${Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
 
+/** El icono segun el tipo de archivo: se reconoce de un vistazo. */
+function iconoDoc(ext) {
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].includes(ext)) return 'image';
+  if (ext === 'pdf') return 'picture-as-pdf';
+  if (['doc', 'docx'].includes(ext)) return 'description';
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'table-chart';
+  return 'insert-drive-file';
+}
+
+function colorDoc(ext) {
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].includes(ext)) return '#4A7FB5';
+  if (ext === 'pdf') return '#9B2340';
+  if (['doc', 'docx'].includes(ext)) return '#2B5CA8';
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return '#1B7F4C';
+  return C.ink3;
+}
+
+
 export default function ExpedienteScreen({ route, navigation }) {
   const { id } = route.params;
   const [e, setE] = useState(null);
   const [error, setError] = useState(null);
+  const [bajando, setBajando] = useState(null);
   const [tareas, setTareas] = useState(null);
 
   const cargar = useCallback(async () => {
@@ -42,6 +64,24 @@ export default function ExpedienteScreen({ route, navigation }) {
   useEffect(() => {
     if (e) navigation.setOptions({ title: e.codigo || 'Expediente' });
   }, [e, navigation]);
+
+  /**
+   * Baja el documento y lo abre con el visor del telefono.
+   *
+   * El archivo no se sirve desde su carpeta sino por el API, que verifica el
+   * permiso en cada descarga: el enlace solo no alcanza para bajarlo.
+   */
+  const abrirDoc = async (d) => {
+    setBajando(d.id);
+    try {
+      await abrirArchivo(`${API}/${d.url}&ver=1&_token=${encodeURIComponent(getToken() || '')}`,
+                         d.titulo || 'documento');
+    } catch (err) {
+      Alert.alert('No se pudo abrir', err.message);
+    } finally {
+      setBajando(null);
+    }
+  };
 
   if (error) return <ErrorBox mensaje={error} onReintentar={cargar} />;
   if (!e) return <Cargando texto="Abriendo expediente" />;
@@ -176,6 +216,39 @@ export default function ExpedienteScreen({ route, navigation }) {
         </>
       ) : null}
 
+      {/* Los documentos van antes que los servicios: pasaportes y vouchers
+          es lo que uno entra a buscar cuando el viaje esta cerca. */}
+      {e.documentos && e.documentos.length ? (
+        <>
+          <Text style={s.seccion}>DOCUMENTOS · {e.documentos.length}</Text>
+          <Card>
+            {e.documentos.map((d, i) => (
+              <Pressable
+                key={d.id}
+                style={[s.doc, i < e.documentos.length - 1 && s.borde]}
+                onPress={() => abrirDoc(d)}
+              >
+                <View style={[s.docIco, { backgroundColor: colorDoc(d.extension) }]}>
+                  <MaterialIcons name={iconoDoc(d.extension)} size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.docT} numberOfLines={1}>
+                    {d.titulo || d.tipo || 'Documento'}
+                  </Text>
+                  <Text style={s.docS} numberOfLines={1}>
+                    {[d.tipo, d.peso_kb ? `${d.peso_kb} KB` : null]
+                      .filter(Boolean).join(' · ')}
+                  </Text>
+                </View>
+                {bajando === d.id
+                  ? <ActivityIndicator size="small" color={C.tealDeep} />
+                  : <MaterialIcons name="file-download" size={20} color={C.ink3} />}
+              </Pressable>
+            ))}
+          </Card>
+        </>
+      ) : null}
+
       {e.servicios && e.servicios.length ? (
         <>
           <Text style={s.seccion}>SERVICIOS</Text>
@@ -253,6 +326,10 @@ const s = StyleSheet.create({
   fecha: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   fechaT: { fontSize: 10.5, color: C.ink3, textTransform: 'uppercase', fontWeight: '600' },
   fechaV: { fontSize: 13, color: C.ink, fontWeight: '500' },
+  doc: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  docIco: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  docT: { fontSize: 14.5, fontWeight: '600', color: C.ink },
+  docS: { fontSize: 11.5, color: C.ink3, marginTop: 2 },
   seccion: { fontSize: 11.5, fontWeight: '700', letterSpacing: 1, color: C.ink3, marginTop: 20, marginBottom: 9 },
   montos: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   montoT: { fontSize: 11, color: C.ink3, textTransform: 'uppercase', fontWeight: '600' },
