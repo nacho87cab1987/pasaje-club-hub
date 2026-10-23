@@ -60,6 +60,8 @@ import EncuestaResultadosScreen from '../screens/EncuestaResultadosScreen';
 import EncuestaFormScreen from '../screens/EncuestaFormScreen';
 import MiTarjetaScreen from '../screens/MiTarjetaScreen';
 import PostventaScreen from '../screens/PostventaScreen';
+import GrupalesScreen from '../screens/GrupalesScreen';
+import GrupalScreen from '../screens/GrupalScreen';
 import SalidaScreen from '../screens/SalidaScreen';
 import EditarPersonaScreen from '../screens/EditarPersonaScreen';
 import CatalogosScreen from '../screens/CatalogosScreen';
@@ -202,6 +204,8 @@ export default function RootNavigator() {
             <Stack.Screen name="MiTarjeta" component={MiTarjetaScreen} options={{ title: 'Mi tarjeta' }} />
             <Stack.Screen name="Postventa" component={PostventaScreen} options={{ title: 'Salidas' }} />
             <Stack.Screen name="Salida" component={SalidaScreen} options={{ title: '' }} />
+            <Stack.Screen name="Grupales" component={GrupalesScreen} options={{ title: 'Grupales' }} />
+            <Stack.Screen name="Grupal" component={GrupalScreen} options={{ title: '' }} />
             <Stack.Screen name="EditarPersona" component={EditarPersonaScreen} options={{ title: 'Editar' }} />
             <Stack.Screen name="Catalogos" component={CatalogosScreen} options={{ title: 'Áreas y puestos' }} />
             <Stack.Screen name="ReconocerForm" component={ReconocerFormScreen} options={{ title: 'Reconocer a alguien' }} />

@@ -432,19 +432,17 @@ export const gestion = {
   eliminar:  (tarea_id)    => api.post('hub_gestion.php', 'eliminar', { tarea_id }),
 };
 
+export const grupales = {
+  lista:   ()      => api.get('hub_grupales.php', 'list'),
+  detalle: (fecha) => api.get('hub_grupales.php', 'detalle', { fecha }),
+};
+
 export const postventa = {
   agenda:      (params) => api.get('hub_postventa.php', 'agenda', params),
   salida:      (id)     => api.get('hub_postventa.php', 'salida', { id }),
   avisos:      (sinLeer) => api.get('hub_postventa.php', 'avisos',
                                     sinLeer ? { sin_leer: 1 } : {}),
   marcarVisto: (id)     => api.post('hub_postventa.php', 'marcar_visto', { id }),
-};
-
-export const grupales = {
-  listado:  ()      => get('hub_grupales.php?action=listado'),
-  grupal:   (clave) => get(`hub_grupales.php?action=grupal&clave=${encodeURIComponent(clave)}`),
-  deudores: ()      => get('hub_grupales.php?action=deudores'),
-  recordar: (datos) => post('hub_grupales.php?action=recordar', datos),
 };
 
 export const tarjeta = {
