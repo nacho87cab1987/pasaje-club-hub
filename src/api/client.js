@@ -440,6 +440,13 @@ export const postventa = {
   marcarVisto: (id)     => api.post('hub_postventa.php', 'marcar_visto', { id }),
 };
 
+export const grupales = {
+  listado:  ()      => get('hub_grupales.php?action=listado'),
+  grupal:   (clave) => get(`hub_grupales.php?action=grupal&clave=${encodeURIComponent(clave)}`),
+  deudores: ()      => get('hub_grupales.php?action=deudores'),
+  recordar: (datos) => post('hub_grupales.php?action=recordar', datos),
+};
+
 export const tarjeta = {
   mia: () => api.get('hub_tarjeta.php', 'mi_tarjeta'),
 };
