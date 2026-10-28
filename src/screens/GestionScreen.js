@@ -8,14 +8,9 @@ import { vibrar } from '../MenuContextual';
 import { Cargando, ErrorBox, Vacio } from '../components/UI';
 import { C, R, sombra } from '../theme';
 
-const GRUPOS = [
-  { k: 'vencidas',  nom: 'Vencidas',    color: C.bordo },
-  { k: 'hoy',       nom: 'Para hoy',    color: C.warn },
-  { k: 'semana',    nom: 'Esta semana', color: C.tealDeep },
-  { k: 'despues',   nom: 'Mas adelante',color: C.ink3 },
-  { k: 'sin_fecha', nom: 'Sin fecha',   color: C.ink3 },
-  { k: 'hechas',    nom: 'Completadas', color: C.ok },
-];
+// Los grupos ya no son fijos: los arma el servidor con los estados que
+// efectivamente tienen tareas. Una columna vacia solo ocupa pantalla, y cada
+// espacio puede tener estados distintos.
 
 const PRIORIDAD = {
   urgente: { c: '#790F35', bg: '#F6E3EA' },
@@ -56,14 +51,14 @@ export default function GestionScreen({ navigation }) {
         }),
         gestion.espacios().catch(() => ({ items: [] })),
       ]);
-      setData(t.grupos);
+      setData(t.grupos || []);
       setPuedeTodas(!!t.puede_ver_todas);
       // El servidor puede bajar el alcance pedido si no tenes permiso.
       if (t.scope && t.scope !== scope) setScope(t.scope);
       setEspacios(e.items || []);
     } catch (err) {
       setError(err.message);
-      setData({});
+      setData([]);
     }
   }, [espacio, verHechas, scope]);
 
@@ -91,9 +86,16 @@ export default function GestionScreen({ navigation }) {
   if (data === null) return <Cargando texto="Cargando tus tareas" />;
   if (error) return <ErrorBox mensaje={error} onReintentar={cargar} />;
 
-  const secciones = GRUPOS
-    .filter((g) => (data[g.k] || []).length)
-    .map((g) => ({ ...g, data: data[g.k] }));
+  // El servidor ya los manda ordenados y sin los vacios.
+  const secciones = (data || [])
+    .filter((g) => verHechas || !g.cerrado)
+    .map((g) => ({
+      k: g.clave,
+      nom: g.nombre,
+      color: g.color || (g.cerrado ? C.ok : C.ink3),
+      cuantas: g.cuantas,
+      data: g.tareas,
+    }));
 
   // En "Mias" filtramos por los espacios donde tengo algo; en los otros
   // alcances, por los que tienen pendientes de cualquiera.
@@ -230,7 +232,7 @@ export default function GestionScreen({ navigation }) {
           <Pressable style={s.verHechas} onPress={() => setVerHechas(!verHechas)}>
             <MaterialIcons name={verHechas ? 'visibility-off' : 'history'} size={17} color={C.tealDeep} />
             <Text style={s.verHechasTxt}>
-              {verHechas ? 'Ocultar completadas' : 'Ver completadas'}
+              {verHechas ? 'Ocultar las cerradas' : 'Ver las cerradas'}
             </Text>
           </Pressable>
         )}
