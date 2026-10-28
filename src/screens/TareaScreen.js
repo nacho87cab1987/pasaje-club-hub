@@ -6,6 +6,9 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { gestion } from '../api/client';
 import MenuContextual, { usarPosicionToque, vibrar } from '../MenuContextual';
+import DialogoRepetir from '../DialogoRepetir';
+import DialogoEtiquetas from '../DialogoEtiquetas';
+import { abrirArchivo } from '../archivos';
 import { Card, Avatar, Cargando, ErrorBox, Tag } from '../components/UI';
 import { C, R, iniciales } from '../theme';
 
@@ -26,6 +29,16 @@ function cuando(iso) {
   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
 }
 
+/** El icono segun el tipo de archivo. */
+function iconoArchivo(ext) {
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].includes(ext)) return 'image';
+  if (ext === 'pdf') return 'picture-as-pdf';
+  if (['doc', 'docx'].includes(ext)) return 'description';
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'table-chart';
+  return 'insert-drive-file';
+}
+
+
 export default function TareaScreen({ route, navigation }) {
   const { id } = route.params;
   const [data, setData] = useState(null);
@@ -33,6 +46,8 @@ export default function TareaScreen({ route, navigation }) {
   const [nuevaSub, setNuevaSub] = useState('');
   // Las sugerencias del @: null cuando no se esta escribiendo una mencion.
   const [mencion, setMencion] = useState(null);
+  const [repitiendo, setRepitiendo] = useState(false);
+  const [etiquetando, setEtiquetando] = useState(null);
   const [error, setError] = useState(null);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -79,6 +94,20 @@ export default function TareaScreen({ route, navigation }) {
           texto: 'Editar',
           icono: 'edit',
           onPress: () => navigation.navigate('TareaForm', { tarea: t }),
+        },
+        // Las subtareas no se repiten solas: se repite la de arriba y ellas
+        // vienen incluidas.
+        ...(t.parent_id ? [] : [{
+          texto: t.recurrencia && t.recurrencia.activo
+            ? 'Cambiar la repetición'
+            : 'Repetir todos los meses',
+          icono: 'autorenew',
+          onPress: () => setRepitiendo(true),
+        }]),
+        {
+          texto: 'Etiquetas',
+          icono: 'label',
+          onPress: abrirEtiquetas,
         },
         {
           texto: 'Eliminar',
@@ -252,7 +281,29 @@ export default function TareaScreen({ route, navigation }) {
           </>
         ) : null}
 
-        {data.expediente ? (
+        {t.etiquetas && t.etiquetas.length ? (
+        <View style={s.etiquetas}>
+          {t.etiquetas.map((e) => (
+            <View key={e.id} style={[s.etiq, { backgroundColor: (e.color || C.ink3) + '22' }]}>
+              <View style={[s.etiqPunto, { backgroundColor: e.color || C.ink3 }]} />
+              <Text style={[s.etiqT, { color: e.color || C.ink2 }]}>{e.nombre}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {/* Que una tarea se repite hay que verlo de entrada: si no, cuando
+          reaparece el mes siguiente uno piensa que alguien la duplico. */}
+      {t.recurrencia && t.recurrencia.activo ? (
+        <View style={s.repite}>
+          <MaterialIcons name="autorenew" size={15} color={C.tealDeep} />
+          <Text style={s.repiteT}>
+            Se repite todos los meses, el día {t.recurrencia.dia_mes}
+          </Text>
+        </View>
+      ) : null}
+
+      {data.expediente ? (
           <Pressable
             style={[s.expediente, sombra]}
             onPress={() => navigation.navigate('Expediente', {
@@ -313,6 +364,30 @@ export default function TareaScreen({ route, navigation }) {
                   returnKeyType="done"
                 />
               </View>
+            </Card>
+          </>
+        ) : null}
+
+        {data.adjuntos && data.adjuntos.length ? (
+          <>
+            <Text style={s.seccion}>ARCHIVOS · {data.adjuntos.length}</Text>
+            <Card>
+              {data.adjuntos.map((a, i) => (
+                <Pressable
+                  key={a.id}
+                  style={[s.adj, i < data.adjuntos.length - 1 && s.borde]}
+                  onPress={() => abrirArchivo(a.url, a.titulo || 'archivo')}
+                >
+                  <MaterialIcons name={iconoArchivo(a.extension)} size={20} color={C.ink3} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.adjT} numberOfLines={1}>{a.titulo || 'Archivo'}</Text>
+                    {a.archivo_tamanio_kb ? (
+                      <Text style={s.adjS}>{a.archivo_tamanio_kb} KB</Text>
+                    ) : null}
+                  </View>
+                  <MaterialIcons name="file-download" size={18} color={C.ink3} />
+                </Pressable>
+              ))}
             </Card>
           </>
         ) : null}
@@ -383,6 +458,21 @@ export default function TareaScreen({ route, navigation }) {
         </Pressable>
       </View>
 
+      <DialogoRepetir
+        visible={repitiendo}
+        actual={t.recurrencia}
+        onGuardar={guardarRepeticion}
+        onCerrar={() => setRepitiendo(false)}
+      />
+
+      <DialogoEtiquetas
+        visible={!!etiquetando}
+        todas={etiquetando}
+        puestas={t.etiquetas}
+        onGuardar={guardarEtiquetas}
+        onCerrar={() => setEtiquetando(null)}
+      />
+
       <MenuContextual
         visible={!!ctx.menu}
         x={ctx.menu && ctx.menu.x}
@@ -409,6 +499,19 @@ const s = StyleSheet.create({
   filaTxt: { fontSize: 13.5, color: C.ink2 },
   desc: { paddingHorizontal: 15, paddingVertical: 13, borderTopWidth: 1, borderTopColor: C.lineSoft },
   descTxt: { fontSize: 14.5, lineHeight: 21, color: C.ink2 },
+  etiquetas: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingHorizontal: 15, paddingBottom: 10 },
+  etiq: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },
+  etiqPunto: { width: 7, height: 7, borderRadius: 4 },
+  etiqT: { fontSize: 12, fontWeight: '600' },
+  repite: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    marginHorizontal: 15, marginBottom: 10, backgroundColor: C.tealSoft,
+    borderRadius: R.sm, paddingHorizontal: 11, paddingVertical: 8,
+  },
+  repiteT: { fontSize: 12.5, color: C.tealDeep, fontWeight: '600' },
+  adj: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 14, paddingVertical: 11 },
+  adjT: { fontSize: 14, color: C.ink, fontWeight: '500' },
+  adjS: { fontSize: 11, color: C.ink3, marginTop: 1 },
   seccion: { fontSize: 11.5, fontWeight: '700', letterSpacing: 1, color: C.ink3, marginTop: 20, marginBottom: 9 },
   persona: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 14, paddingVertical: 11 },
   seccionFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
