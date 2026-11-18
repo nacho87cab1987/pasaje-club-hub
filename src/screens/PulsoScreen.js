@@ -123,7 +123,11 @@ export default function PulsoScreen() {
   const kpis = [
     {
       k: 'venta', l: 'Vendido', v: E.venta_usd, prefijo: 'USD ', grande: true,
-      pie: E.ticket_usd ? `ticket ${n(E.ticket_usd)}` : '',
+      // El mismo pie que la pantalla del panel, en el mismo orden.
+      pie: Number(E.venta_ars) > 0 ? `más ARS ${n(E.venta_ars)}`
+         : Number(W.ultimos_15min) > 0 ? `${W.ultimos_15min} visitas en 15 min`
+         : Number(W.anotados_hoy) > 0 ? `${W.anotados_hoy} se anotaron a grupales`
+         : '',
     },
     {
       k: 'exp', l: 'Expedientes', v: E.hoy,
@@ -220,7 +224,7 @@ export default function PulsoScreen() {
             style={[s.rango, rango === o.k && s.rangoOn]}
             onPress={() => { setRango(o.k); setFecha(null); }}
           >
-            <Text style={[s.rangoT, rango === o.k && { color: C.navy, fontWeight: '700' }]}>
+            <Text style={[s.rangoT, rango === o.k && { color: '#fff', fontWeight: '700' }]}>
               {o.n}
             </Text>
           </Pressable>
@@ -266,36 +270,87 @@ export default function PulsoScreen() {
         <>
           <Text style={s.seccion}>QUIÉN VENDIÓ</Text>
           <View style={[s.caja, sombra]}>
-            {ranking.slice(0, 8).map((x, i) => (
-              <View key={x.id || i} style={[s.fila, i < Math.min(8, ranking.length) - 1 && s.borde]}>
-                <Text style={s.puesto}>{i + 1}</Text>
-                <Text style={s.quien} numberOfLines={1}>{x.nombre}</Text>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={s.cuanto}>USD {n(x.venta_usd || x.venta)}</Text>
-                  {x.expedientes ? (
-                    <Text style={s.cuantos}>{x.expedientes} exp.</Text>
-                  ) : null}
+            {ranking.slice(0, 8).map((x, i) => {
+              const usd = Number(x.usd) || 0;
+              const tope = Math.max(...ranking.map((r) => Number(r.usd) || 0), 1);
+              return (
+                <View key={i} style={[s.fila, i < Math.min(8, ranking.length) - 1 && s.borde]}>
+                  <Text style={s.puesto}>{i + 1}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.quien} numberOfLines={1}>{x.vendedor}</Text>
+                    {/* La barra compara de un vistazo: con solo numeros hay
+                        que leerlos todos para saber quien va adelante. */}
+                    <View style={s.pista}>
+                      <View style={[s.lleno, { width: `${(usd / tope) * 100}%` }]} />
+                    </View>
+                    <Text style={s.cuantos}>
+                      {[
+                        x.cant ? `${x.cant} exp.` : null,
+                        Number(x.grupales) > 0 ? `${x.grupales} grup.` : null,
+                        Number(x.ars) > 0 ? `ARS ${n(x.ars)}` : null,
+                      ].filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
+                  <Text style={s.cuanto}>{usd > 0 ? `USD ${n(usd)}` : '—'}</Text>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </>
       ) : null}
 
       {v.mes ? (
         <>
-          <Text style={s.seccion}>EL MES</Text>
+          <Text style={s.seccion}>
+            {rango === 'mes' ? 'CONTRA EL MES PASADO' : 'EL MES'}
+          </Text>
           <View style={[s.caja, sombra, { padding: 16 }]}>
-            <View style={s.mesFila}>
-              <View>
-                <Text style={s.mesT}>Vendido</Text>
-                <Text style={s.mesN}>USD {n(v.mes.venta_usd)}</Text>
+            {/* A este ritmo, como cierra el mes. Es una regla de tres sobre
+                lo que va, no una prediccion: por eso se dice de donde sale. */}
+            {v.mes.proyeccion ? (
+              <View style={s.proy}>
+                <Text style={s.proyT}>A este ritmo el mes cierra en</Text>
+                <Text style={s.proyN}>
+                  {n(v.mes.proyeccion.expedientes)} expedientes
+                  {Number(v.mes.proyeccion.venta_usd) > 0
+                    ? `  ·  USD ${n(v.mes.proyeccion.venta_usd)}` : ''}
+                </Text>
+                <Text style={s.proyPie}>
+                  Quedan {v.mes.proyeccion.dias_restantes} días
+                </Text>
               </View>
-              <View>
-                <Text style={s.mesT}>Expedientes</Text>
-                <Text style={s.mesN}>{n(v.mes.expedientes)}</Text>
-              </View>
-            </View>
+            ) : null}
+
+            {[
+              ['Expedientes', v.mes.expedientes],
+              ['Venta USD', v.mes.venta_usd],
+              ['Presupuestos', v.mes.presupuestos],
+            ].filter(([, x]) => x).map(([lab, x]) => {
+              const a = Number(x.ahora) || 0;
+              const b = Number(x.antes) || 0;
+              const tope = Math.max(a, b, 1);
+              const vr = b ? Math.round(((a - b) / b) * 100) : null;
+              return (
+                <View key={lab} style={s.mesItem}>
+                  <View style={s.mesTop}>
+                    <Text style={s.mesT}>{lab}</Text>
+                    {vr !== null ? (
+                      <Text style={[s.mesVar, vr < 0 && { color: '#B03A5B' }]}>
+                        {vr >= 0 ? '▲' : '▼'} {Math.abs(vr)}%
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={s.mesBarra}>
+                    <View style={[s.mesLleno, { width: `${(a / tope) * 100}%` }]} />
+                    <Text style={s.mesN2}>{n(a)}</Text>
+                  </View>
+                  <View style={s.mesBarra}>
+                    <View style={[s.mesLleno, s.mesAntes, { width: `${(b / tope) * 100}%` }]} />
+                    <Text style={s.mesN2}>{n(b)}</Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         </>
       ) : null}
@@ -383,9 +438,25 @@ const s = StyleSheet.create({
   cuanto: { fontSize: 14, fontWeight: '700', color: C.tealDeep },
   cuantos: { fontSize: 10.5, color: C.ink3, marginTop: 1 },
 
-  mesFila: { flexDirection: 'row', justifyContent: 'space-between' },
-  mesT: { fontSize: 11.5, color: C.ink3 },
-  mesN: { fontSize: 20, fontWeight: '700', color: C.navy, marginTop: 3 },
+  pista: { height: 5, backgroundColor: C.bg, borderRadius: 3, marginTop: 6, marginBottom: 5 },
+  lleno: { height: 5, backgroundColor: C.teal, borderRadius: 3 },
+
+  proy: {
+    backgroundColor: C.tealSoft, borderRadius: R.sm,
+    padding: 12, marginBottom: 14,
+  },
+  proyT: { fontSize: 11, color: C.tealDeep, letterSpacing: 0.4 },
+  proyN: { fontSize: 16, fontWeight: '700', color: C.navy, marginTop: 4 },
+  proyPie: { fontSize: 10.5, color: C.ink3, marginTop: 4 },
+
+  mesItem: { marginBottom: 14 },
+  mesTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  mesT: { fontSize: 11.5, color: C.ink3, letterSpacing: 0.3 },
+  mesVar: { fontSize: 11, color: '#1B5E3F', fontWeight: '600' },
+  mesBarra: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
+  mesLleno: { height: 16, backgroundColor: C.teal, borderRadius: 4, minWidth: 3 },
+  mesAntes: { backgroundColor: '#C9D6DF' },
+  mesN2: { fontSize: 12, color: C.ink2, fontWeight: '600' },
 
   aviso: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 13 },
   avisoT: { flex: 1, fontSize: 13, color: C.ink2 },
