@@ -18,24 +18,52 @@ function variacion(hoy, antes) {
   return Math.round(((a - b) / b) * 100);
 }
 
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+  'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/** "Hoy", "Ayer", o el día escrito cuando se fue más atrás. */
+function nombreDia(iso) {
+  if (!iso) return 'Hoy';
+
+  const d = new Date(`${iso}T12:00:00`);
+  const hoy = new Date();
+  hoy.setHours(12, 0, 0, 0);
+
+  const dias = Math.round((hoy - d) / 86400000);
+  if (dias === 1) return 'Ayer';
+  if (dias < 7) return `${DIAS[d.getDay()]} ${d.getDate()}`;
+
+  return `${d.getDate()} de ${MESES[d.getMonth()]}`;
+}
+
+function tituloDe(rango, data) {
+  if (rango === 'mes') return 'El mes';
+  if (rango === 'semana') return 'La semana';
+  return data && data.es_hoy === false ? 'El pulso' : 'El pulso de hoy';
+}
+
+
 export default function PulsoScreen() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [rango, setRango] = useState('dia');
+  // null = hoy. Al moverse con las flechas queda una fecha fija.
+  const [fecha, setFecha] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
   const timer = useRef(null);
 
   const cargar = useCallback(async (silencioso) => {
     if (!silencioso) setError(null);
     try {
-      setData(await pulso.tablero(rango));
+      setData(await pulso.tablero(rango, fecha));
       setError(null);
     } catch (e) {
       // Con datos viejos en pantalla no se muestra el error: mejor números
       // de hace un minuto que un cartel rojo en el medio de una reunión.
       if (!silencioso) setError(e.message);
     }
-  }, [rango]);
+  }, [rango, fecha]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -57,6 +85,26 @@ export default function PulsoScreen() {
 
     return () => { pararTimer(); sub.remove(); };
   }, [cargar]);
+
+  /**
+   * Mueve un día para atrás o para adelante.
+   *
+   * No se puede pasar de hoy: los números de mañana no existen todavía, y un
+   * tablero vacío parece un error del sistema.
+   */
+  const mover = (paso) => {
+    const base = fecha ? new Date(`${fecha}T12:00:00`) : new Date();
+    base.setDate(base.getDate() + paso);
+
+    const hoy = new Date();
+    hoy.setHours(12, 0, 0, 0);
+
+    if (base > hoy) { setFecha(null); return; }
+
+    const iso = base.toISOString().slice(0, 10);
+    const hoyIso = hoy.toISOString().slice(0, 10);
+    setFecha(iso === hoyIso ? null : iso);
+  };
 
   if (error && !data) return <ErrorBox mensaje={error} onReintentar={() => cargar()} />;
   if (!data) return <Cargando texto="Tomando el pulso" />;
@@ -117,7 +165,7 @@ export default function PulsoScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: C.navy }}
+      style={{ flex: 1, backgroundColor: C.bg }}
       contentContainerStyle={{ padding: 14, paddingBottom: 40 }}
       refreshControl={(
         <RefreshControl refreshing={refrescando} tintColor={C.teal}
@@ -126,9 +174,7 @@ export default function PulsoScreen() {
     >
       <View style={s.cab}>
         <View style={{ flex: 1 }}>
-          <Text style={s.titulo}>
-            {rango === 'mes' ? 'El mes' : rango === 'semana' ? 'La semana' : 'El pulso de hoy'}
-          </Text>
+          <Text style={s.titulo}>{tituloDe(rango, data)}</Text>
           <Text style={s.hora}>
             {data.hora ? `actualizado ${data.hora}` : ''}
             {error ? ' · sin conexión' : ''}
@@ -136,6 +182,32 @@ export default function PulsoScreen() {
         </View>
         <View style={[s.latido, error && { backgroundColor: '#B03A5B' }]} />
       </View>
+
+      {/* Las flechas solo cuando se mira un día: en semana o mes el
+          servidor devuelve el período completo y moverse de a uno no
+          significaría nada. */}
+      {rango === 'dia' ? (
+        <View style={s.navDia}>
+          <Pressable style={s.flecha} onPress={() => mover(-1)} hitSlop={8}>
+            <MaterialIcons name="chevron-left" size={24} color={C.ink2} />
+          </Pressable>
+
+          <Pressable style={s.diaCentro} onPress={() => setFecha(null)}>
+            <Text style={s.diaT}>{nombreDia(fecha)}</Text>
+            {fecha ? <Text style={s.volverHoy}>tocá para volver a hoy</Text> : null}
+          </Pressable>
+
+          <Pressable
+            style={[s.flecha, !fecha && s.flechaOff]}
+            onPress={() => mover(1)}
+            disabled={!fecha}
+            hitSlop={8}
+          >
+            <MaterialIcons name="chevron-right" size={24}
+              color={fecha ? C.ink2 : C.line} />
+          </Pressable>
+        </View>
+      ) : null}
 
       <View style={s.rangos}>
         {[
@@ -146,7 +218,7 @@ export default function PulsoScreen() {
           <Pressable
             key={o.k}
             style={[s.rango, rango === o.k && s.rangoOn]}
-            onPress={() => setRango(o.k)}
+            onPress={() => { setRango(o.k); setFecha(null); }}
           >
             <Text style={[s.rangoT, rango === o.k && { color: C.navy, fontWeight: '700' }]}>
               {o.n}
@@ -169,14 +241,22 @@ export default function PulsoScreen() {
               {x.prefijo ? <Text style={s.kpiPre}>{x.prefijo}</Text> : null}
               {n(x.v)}
             </Text>
-            <Text style={s.kpiL}>{x.l}</Text>
+            <Text style={[s.kpiL, x.grande && { color: 'rgba(255,255,255,0.65)' }]}>
+              {x.l}
+            </Text>
             {x.var !== null && x.var !== undefined ? (
-              <Text style={[s.kpiVar, x.var < 0 && { color: '#F0A0B4' }]}>
+              <Text style={[s.kpiVar, x.var < 0 && { color: '#B03A5B' }]}>
                 {x.var >= 0 ? '▲' : '▼'} {Math.abs(x.var)}% {contra}
               </Text>
             ) : null}
             {x.pie ? (
-              <Text style={[s.kpiPie, x.alerta && { color: '#F0A0B4' }]}>{x.pie}</Text>
+              <Text style={[
+                s.kpiPie,
+                x.grande && { color: 'rgba(255,255,255,0.6)' },
+                x.alerta && { color: '#B03A5B', fontWeight: '600' },
+              ]}>
+                {x.pie}
+              </Text>
             ) : null}
           </View>
         ))}
@@ -244,7 +324,7 @@ export default function PulsoScreen() {
 function Aviso({ n: cuantas, t }) {
   return (
     <View style={s.aviso}>
-      <MaterialIcons name="error-outline" size={17} color="#F0A0B4" />
+      <MaterialIcons name="error-outline" size={17} color="#B03A5B" />
       <Text style={s.avisoT}>
         <Text style={{ fontWeight: '700' }}>{cuantas}</Text> {t}
       </Text>
@@ -253,46 +333,60 @@ function Aviso({ n: cuantas, t }) {
 }
 
 const s = StyleSheet.create({
-  cab: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  titulo: { fontSize: 22, fontWeight: '700', color: '#fff' },
-  hora: { fontSize: 11.5, color: 'rgba(255,255,255,0.5)', marginTop: 3 },
+  cab: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  titulo: { fontSize: 22, fontWeight: '700', color: C.ink },
+  hora: { fontSize: 11.5, color: C.ink3, marginTop: 3 },
   latido: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.teal },
+
+  navDia: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
+    borderRadius: R.md, marginBottom: 12, borderWidth: 1, borderColor: C.line,
+  },
+  flecha: { padding: 11 },
+  flechaOff: { opacity: 0.4 },
+  diaCentro: { flex: 1, alignItems: 'center', paddingVertical: 9 },
+  diaT: { fontSize: 14.5, fontWeight: '600', color: C.ink },
+  volverHoy: { fontSize: 10.5, color: C.tealDeep, marginTop: 1 },
+
   rangos: {
-    flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: R.md, padding: 4, marginBottom: 14,
+    flexDirection: 'row', backgroundColor: '#fff', borderRadius: R.md,
+    padding: 4, marginBottom: 14, borderWidth: 1, borderColor: C.line,
   },
   rango: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: R.sm },
-  rangoOn: { backgroundColor: C.teal },
-  rangoT: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
+  rangoOn: { backgroundColor: C.navy },
+  rangoT: { fontSize: 13, color: C.ink3 },
+
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   kpi: {
-    width: '48%', backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: R.md, padding: 14, borderWidth: 0, borderColor: 'transparent',
+    width: '48%', backgroundColor: '#fff', borderRadius: R.md, padding: 14,
+    borderWidth: 0, borderColor: 'transparent',
   },
-  kpiGrande: { width: '100%', backgroundColor: 'rgba(17,188,179,0.14)' },
-  kpiV: { fontSize: 26, fontWeight: '700', color: '#fff' },
-  kpiVGrande: { fontSize: 38 },
+  // La venta ocupa el ancho entero y en el navy de la marca: es el numero
+  // que uno busca primero al abrir la pantalla.
+  kpiGrande: { width: '100%', backgroundColor: C.navy },
+  kpiV: { fontSize: 26, fontWeight: '700', color: C.navy },
+  kpiVGrande: { fontSize: 38, color: '#fff' },
   kpiPre: { fontSize: 17, color: C.teal, fontWeight: '600' },
-  kpiL: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 3 },
-  kpiVar: { fontSize: 11, color: C.teal, marginTop: 5 },
-  kpiPie: { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 3 },
+  kpiL: { fontSize: 12, color: C.ink3, marginTop: 3 },
+  kpiVar: { fontSize: 11, color: '#1B5E3F', marginTop: 5 },
+  kpiPie: { fontSize: 11, color: C.ink3, marginTop: 3 },
+
   seccion: {
     fontSize: 11, fontWeight: '700', letterSpacing: 1.1,
-    color: 'rgba(255,255,255,0.4)', marginTop: 22, marginBottom: 9,
+    color: C.ink3, marginTop: 22, marginBottom: 9,
   },
-  caja: { backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: R.md },
+  caja: { backgroundColor: '#fff', borderRadius: R.md },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13 },
-  borde: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
-  puesto: {
-    width: 22, fontSize: 13, fontWeight: '700',
-    color: 'rgba(255,255,255,0.35)', textAlign: 'center',
-  },
-  quien: { flex: 1, fontSize: 14, color: '#fff' },
-  cuanto: { fontSize: 14, fontWeight: '700', color: C.teal },
-  cuantos: { fontSize: 10.5, color: 'rgba(255,255,255,0.4)', marginTop: 1 },
+  borde: { borderBottomWidth: 1, borderBottomColor: C.lineSoft },
+  puesto: { width: 22, fontSize: 13, fontWeight: '700', color: C.ink3, textAlign: 'center' },
+  quien: { flex: 1, fontSize: 14, color: C.ink },
+  cuanto: { fontSize: 14, fontWeight: '700', color: C.tealDeep },
+  cuantos: { fontSize: 10.5, color: C.ink3, marginTop: 1 },
+
   mesFila: { flexDirection: 'row', justifyContent: 'space-between' },
-  mesT: { fontSize: 11.5, color: 'rgba(255,255,255,0.5)' },
-  mesN: { fontSize: 20, fontWeight: '700', color: '#fff', marginTop: 3 },
+  mesT: { fontSize: 11.5, color: C.ink3 },
+  mesN: { fontSize: 20, fontWeight: '700', color: C.navy, marginTop: 3 },
+
   aviso: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 13 },
-  avisoT: { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+  avisoT: { flex: 1, fontSize: 13, color: C.ink2 },
 });
