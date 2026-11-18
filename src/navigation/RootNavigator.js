@@ -61,6 +61,7 @@ import EncuestaFormScreen from '../screens/EncuestaFormScreen';
 import MiTarjetaScreen from '../screens/MiTarjetaScreen';
 import PostventaScreen from '../screens/PostventaScreen';
 import GrupalesScreen from '../screens/GrupalesScreen';
+import PulsoScreen from '../screens/PulsoScreen';
 import GrupalScreen from '../screens/GrupalScreen';
 import SalidaScreen from '../screens/SalidaScreen';
 import EditarPersonaScreen from '../screens/EditarPersonaScreen';
@@ -205,6 +206,7 @@ export default function RootNavigator() {
             <Stack.Screen name="Postventa" component={PostventaScreen} options={{ title: 'Salidas' }} />
             <Stack.Screen name="Salida" component={SalidaScreen} options={{ title: '' }} />
             <Stack.Screen name="Grupales" component={GrupalesScreen} options={{ title: 'Grupales' }} />
+            <Stack.Screen name="Pulso" component={PulsoScreen} options={{ title: 'Pulso' }} />
             <Stack.Screen name="Grupal" component={GrupalScreen} options={{ title: '' }} />
             <Stack.Screen name="EditarPersona" component={EditarPersonaScreen} options={{ title: 'Editar' }} />
             <Stack.Screen name="Catalogos" component={CatalogosScreen} options={{ title: 'Áreas y puestos' }} />

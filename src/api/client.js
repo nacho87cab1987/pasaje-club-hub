@@ -437,6 +437,11 @@ export const gestion = {
   eliminar:  (tarea_id)    => api.post('hub_gestion.php', 'eliminar', { tarea_id }),
 };
 
+export const pulso = {
+  tablero: (rango, fecha) =>
+    api.get('hub_pulso.php', 'tablero', { rango, ...(fecha ? { fecha } : {}) }),
+};
+
 export const grupales = {
   lista:   ()      => api.get('hub_grupales.php', 'list'),
   detalle: (fecha) => api.get('hub_grupales.php', 'detalle', { fecha }),

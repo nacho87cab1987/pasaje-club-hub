@@ -12,7 +12,7 @@ const IMPLEMENTADOS = { personas: 'Personas', admin: 'Admin', crm: 'CRM', gestio
   cumpleanos: 'Cumpleanos', cumples: 'Cumpleanos', muro: 'Inicio',
   expedientes: 'Expedientes', equipo: 'Equipo', comisiones: 'Comisiones',
   onboarding: 'Onboarding', ventas: 'Ventas', pasajito: 'Pasajito', desempeno: 'Desempeno', eventos: 'Eventos',
-  reconocimientos: 'Reconocimientos', encuestas: 'Encuestas', postventa: 'Postventa', grupales: 'Grupales' };
+  reconocimientos: 'Reconocimientos', encuestas: 'Encuestas', postventa: 'Postventa', grupales: 'Grupales', pulso: 'Pulso' };
 
 const TITULOS = {
   general: 'General',
