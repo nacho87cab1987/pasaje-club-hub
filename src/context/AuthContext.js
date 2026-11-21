@@ -40,9 +40,21 @@ export function AuthProvider({ children }) {
         const b = await authApi.me();
         setBoot(b);
         registrarPush().catch(() => {});
-      } catch {
-        setToken(null);
-        await SecureStore.deleteItemAsync(CLAVE_TOKEN).catch(() => {});
+      } catch (e) {
+        // Solo se borra el token si el servidor dijo que no sirve.
+        //
+        // Antes se borraba ante CUALQUIER falla: abrir la app sin señal, o
+        // con el servidor lento un segundo, dejaba a la persona afuera y
+        // obligaba a escribir la contraseña de nuevo. Un problema de red no
+        // significa que la sesión venció.
+        if (e && e.status === 401) {
+          setToken(null);
+          await SecureStore.deleteItemAsync(CLAVE_TOKEN).catch(() => {});
+        } else {
+          // Se deja la sesión y se avisa: la app muestra el error con un
+          // botón para reintentar en vez de mandar al login.
+          setError(e && e.message ? e.message : 'No pude conectarme');
+        }
       } finally {
         setCargando(false);
       }

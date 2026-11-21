@@ -78,20 +78,44 @@ async function request(archivo, action, { method = 'GET', body, params, timeout 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeout);
 
+  // Un reintento antes de darse por vencido.
+  //
+  // En el celular la conexion se corta por un segundo todo el tiempo: al
+  // salir del ascensor, al cambiar de wifi a datos. Sin reintentar, cada uno
+  // de esos cortes era un error en pantalla aunque la red volviera sola.
+  //
+  // Solo para GET: reintentar un POST podria mandar el mismo mensaje dos
+  // veces, y es peor un mensaje duplicado al cliente que un error.
   let res;
-  try {
-    res = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-      signal: ctrl.signal,
-    });
-  } catch (e) {
-    clearTimeout(timer);
-    if (e.name === 'AbortError') throw new ApiError('La conexion tardo demasiado', 0);
+  let ultimoFallo = null;
+
+  for (let intento = 0; intento < (method === 'GET' ? 2 : 1); intento++) {
+    if (intento > 0) await new Promise((r) => setTimeout(r, 700));
+
+    try {
+      res = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: ctrl.signal,
+      });
+      ultimoFallo = null;
+      break;
+    } catch (e) {
+      ultimoFallo = e;
+      // Si se agoto el tiempo no se reintenta: el reloj ya corrio entero.
+      if (e.name === 'AbortError') break;
+    }
+  }
+
+  clearTimeout(timer);
+
+  if (ultimoFallo) {
+    if (ultimoFallo.name === 'AbortError') {
+      throw new ApiError('La conexion tardo demasiado', 0);
+    }
     throw new ApiError('No se pudo conectar. Revisa tu internet.', 0);
   }
-  clearTimeout(timer);
 
   const texto = await res.text();
   let data;
@@ -106,7 +130,15 @@ async function request(archivo, action, { method = 'GET', body, params, timeout 
   // Un 401 de una API de terceros (el CRM viejo, por ejemplo) significa que
   // ESA api rechazo el token, no que la sesion del hub haya vencido. Cerrar
   // sesion por eso deja a la persona afuera sin motivo.
-  if (res.status === 401 && archivo.startsWith('hub_') && _onNoAutorizado) {
+  // Un 401 cierra la sesion solo si el servidor dice que el token no sirve.
+  //
+  // Varios modulos devuelven 401 por falta de permiso -"no tenes acceso al
+  // Pulso"- y eso no es una sesion vencida: cerrarla por eso echaba a la
+  // persona de la app por entrar a una pantalla que no le corresponde.
+  const esSesionVencida = res.status === 401
+    && /no autoriz|sesi[oó]n|token/i.test(String(data.error || ''));
+
+  if (esSesionVencida && archivo.startsWith('hub_') && _onNoAutorizado) {
     _onNoAutorizado();
   }
   if (!res.ok || data.ok === false) {
