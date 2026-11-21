@@ -489,12 +489,25 @@ export default function CrmChatScreen({ route, navigation }) {
     });
   };
 
-  const abrirPlantillasWa = async () => {
-    try {
-      const r = await crm.plantillasWa();
-      setPlantillasWa(r.items || []);
-    } catch (e) {
-      Alert.alert('No se pudieron cargar', e.message);
+  /**
+   * Abre las respuestas rápidas con las plantillas de WhatsApp adentro.
+   *
+   * Las dos cosas sirven para lo mismo -mandar algo escrito de antemano- así
+   * que van juntas. Tenerlas en lugares distintos obliga a recordar cuál
+   * está dónde, y en el medio de una conversación nadie se acuerda.
+   */
+  const abrirRespuestas = async () => {
+    setVerPlantillas(true);
+
+    // Se piden sin bloquear: la hoja ya está abierta con las rápidas, y las
+    // de WhatsApp aparecen cuando llegan.
+    if (plantillasWa === null) {
+      try {
+        const r = await crm.plantillasWa();
+        setPlantillasWa(r.items || []);
+      } catch (e) {
+        setPlantillasWa([]);
+      }
     }
   };
 
@@ -515,7 +528,7 @@ export default function CrmChatScreen({ route, navigation }) {
       return;
     }
 
-    setPlantillasWa(null);
+    setVerPlantillas(false);
     setSubiendo(true);
     try {
       await crm.iniciarPlantilla({
@@ -628,13 +641,13 @@ export default function CrmChatScreen({ route, navigation }) {
           // sin saber que hacer.
           <Pressable
             style={[s.wa, !wa.abierta && { backgroundColor: '#F6E3EA' }]}
-            onPress={!wa.abierta ? abrirPlantillasWa : undefined}
+            onPress={!wa.abierta ? abrirRespuestas : undefined}
             disabled={wa.abierta}
           >
             <MaterialIcons name={wa.abierta ? 'schedule' : 'lock'} size={12}
               color={wa.abierta ? '#0F6E56' : C.bordo} />
             <Text style={[s.waTxt, !wa.abierta && { color: C.bordo }]}>
-              {wa.abierta ? `Ventana ${wa.texto}` : 'Ventana cerrada · enviar plantilla'}
+              {wa.abierta ? `Ventana ${wa.texto}` : 'Ventana cerrada · usar plantilla'}
             </Text>
           </Pressable>
         ) : null}
@@ -804,7 +817,7 @@ export default function CrmChatScreen({ route, navigation }) {
         <Pressable onPress={() => adjuntar(false)} hitSlop={8} style={s.notaBtn}>
           <MaterialIcons name="attach-file" size={19} color={C.ink3} />
         </Pressable>
-        <Pressable onPress={() => setVerPlantillas(true)} hitSlop={8} style={s.notaBtn}>
+        <Pressable onPress={abrirRespuestas} hitSlop={8} style={s.notaBtn}>
           <MaterialIcons name="bolt" size={19} color={C.ink3} />
         </Pressable>
         <TextInput
@@ -840,29 +853,6 @@ export default function CrmChatScreen({ route, navigation }) {
           </Pressable>
         )}
       </View>
-      <Hoja visible={!!plantillasWa} onCerrar={() => setPlantillasWa(null)}
-        titulo="Plantillas de WhatsApp">
-        <Text style={s.hojaNota}>
-          Pasaron más de 24 horas desde el último mensaje del cliente. Solo se
-          pueden mandar plantillas aprobadas por Meta.
-        </Text>
-        {(plantillasWa || []).length === 0 ? (
-          <Text style={s.vacioHoja}>
-            No hay plantillas aprobadas. Se cargan desde el panel web.
-          </Text>
-        ) : (plantillasWa || []).map((t) => (
-          <Pressable key={t.id} style={s.plantillaWa} onPress={() => mandarPlantilla(t)}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.plantillaWaT}>{t.nombre}</Text>
-              {t.cuerpo ? (
-                <Text style={s.plantillaWaC} numberOfLines={3}>{t.cuerpo}</Text>
-              ) : null}
-            </View>
-            <MaterialIcons name="send" size={18} color={C.tealDeep} />
-          </Pressable>
-        ))}
-      </Hoja>
-
       <Hoja visible={verPlantillas} onCerrar={() => setVerPlantillas(false)} titulo="Respuestas rapidas">
         {falla.plantillas ? (
           <Text style={s.hojaVacio}>No pude cargarlas: {falla.plantillas}</Text>
@@ -892,6 +882,38 @@ export default function CrmChatScreen({ route, navigation }) {
             ))}
           </View>
         ))}
+
+        {/* Las plantillas aprobadas por Meta, al final.
+            Van abajo porque en el día a día se usan menos: solo hacen falta
+            cuando pasaron 24hs y la ventana se cerró. Pero con la ventana
+            cerrada son lo único que se puede mandar, así que ahí se avisa. */}
+        {(plantillasWa || []).length ? (
+          <View>
+            <Text style={s.hojaCat}>PLANTILLAS DE WHATSAPP</Text>
+            {!wa || wa.abierta ? null : (
+              <Text style={s.hojaAviso}>
+                La ventana de 24 horas se cerró. Solo se pueden mandar estas.
+              </Text>
+            )}
+            {plantillasWa.map((t) => (
+              <Pressable key={`wa-${t.id}`} style={s.plantilla}
+                onPress={() => mandarPlantilla(t)}>
+                <View style={{ flex: 1 }}>
+                  <View style={s.plantillaTop}>
+                    <Text style={s.plantillaTit}>{t.nombre}</Text>
+                    {t.cuantas_variables > 0 ? (
+                      <Text style={s.atajo}>{t.cuantas_variables} datos</Text>
+                    ) : null}
+                  </View>
+                  {t.cuerpo ? (
+                    <Text style={s.plantillaTxt} numberOfLines={2}>{t.cuerpo}</Text>
+                  ) : null}
+                </View>
+                <MaterialIcons name="send" size={17} color={C.tealDeep} />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
       </Hoja>
 
       <Hoja visible={verEtiquetas} onCerrar={() => setVerEtiquetas(false)} titulo="Etiquetas">
@@ -1132,18 +1154,10 @@ const s = StyleSheet.create({
   // del vendedor, y la segunda definicion pisaba a la primera. El texto de la
   // transcripcion terminaba del color de las notas -crema sobre crema- y no
   // se veia, aunque estuviera ahi.
-  hojaNota: {
-    fontSize: 12.5, color: C.ink3, lineHeight: 18,
-    paddingHorizontal: 16, paddingBottom: 12,
+  hojaAviso: {
+    fontSize: 12, color: C.bordo, paddingHorizontal: 16, paddingBottom: 8,
+    lineHeight: 17,
   },
-  vacioHoja: { fontSize: 13, color: C.ink3, textAlign: 'center', padding: 24 },
-  plantillaWa: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 13,
-    borderTopWidth: 1, borderTopColor: C.lineSoft,
-  },
-  plantillaWaT: { fontSize: 14.5, fontWeight: '600', color: C.ink },
-  plantillaWaC: { fontSize: 12.5, color: C.ink3, marginTop: 3, lineHeight: 17 },
 
   voz: { paddingVertical: 4, minWidth: 168, maxWidth: 250 },
   vozTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
