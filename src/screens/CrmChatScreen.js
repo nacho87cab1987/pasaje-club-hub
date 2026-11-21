@@ -326,7 +326,12 @@ export default function CrmChatScreen({ route, navigation }) {
     setSubiendo(true);
     try {
       const subido = await crm.subirAdjunto(audio, id, audio.duracion);
-      if (!subido || !subido.id) throw new Error('El servidor no devolvió el adjunto');
+
+      // El servidor devuelve `adjunto_id`, no `id`. Comprobar el nombre
+      // equivocado hacia fallar envios que en realidad habian funcionado.
+      if (!subido || !(subido.adjunto_id || subido.id)) {
+        throw new Error('El servidor no devolvió el adjunto');
+      }
       setAdjuntos((x) => [...x, { ...subido, duracion: audio.duracion }]);
     } catch (e) {
       // El detalle importa: el error puede ser del permiso del microfono, de
