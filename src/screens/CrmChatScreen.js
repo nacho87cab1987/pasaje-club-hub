@@ -225,6 +225,7 @@ export default function CrmChatScreen({ route, navigation }) {
   const [plantillas, setPlantillas] = useState([]);
   const [verPlantillas, setVerPlantillas] = useState(false);
   const [plantillasWa, setPlantillasWa] = useState(null);
+  const [fallaWa, setFallaWa] = useState(null);
   const [etiquetas, setEtiquetas] = useState([]);
   const [verEtiquetas, setVerEtiquetas] = useState(false);
   const [falla, setFalla] = useState({});
@@ -505,8 +506,12 @@ export default function CrmChatScreen({ route, navigation }) {
       try {
         const r = await crm.plantillasWa();
         setPlantillasWa(r.items || []);
+        setFallaWa(null);
       } catch (e) {
+        // Antes se dejaba la lista vacia en silencio y no habia forma de
+        // saber si no habia plantillas o si algo fallo. Ahora se dice.
         setPlantillasWa([]);
+        setFallaWa((e && e.message) || String(e));
       }
     }
   };
@@ -887,9 +892,17 @@ export default function CrmChatScreen({ route, navigation }) {
             Van abajo porque en el día a día se usan menos: solo hacen falta
             cuando pasaron 24hs y la ventana se cerró. Pero con la ventana
             cerrada son lo único que se puede mandar, así que ahí se avisa. */}
-        {(plantillasWa || []).length ? (
+        {plantillasWa !== null ? (
           <View>
             <Text style={s.hojaCat}>PLANTILLAS DE WHATSAPP</Text>
+            {fallaWa ? (
+              <Text style={s.hojaAviso}>No pude cargarlas: {fallaWa}</Text>
+            ) : null}
+            {!fallaWa && !plantillasWa.length ? (
+              <Text style={s.hojaAviso}>
+                No hay plantillas aprobadas y activas.
+              </Text>
+            ) : null}
             {!wa || wa.abierta ? null : (
               <Text style={s.hojaAviso}>
                 La ventana de 24 horas se cerró. Solo se pueden mandar estas.
