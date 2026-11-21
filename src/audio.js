@@ -99,12 +99,16 @@ export function useGrabador() {
     ? Audio.useAudioRecorder(Audio.RecordingPresets.HIGH_QUALITY)
     : null;
   const [grabando, setGrabando] = useState(false);
+  // Lo ultimo que fallo, para que la pantalla diga por que no se grabo en
+  // vez de quedarse callada.
+  const [ultimoError, setUltimoError] = useState(null);
   const [seg, setSeg] = useState(0);
   const timer = useRef(null);
 
   useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
 
   const arrancar = async () => {
+    setUltimoError(null);
     if (!recorder) return false;
     try {
       const permiso = await Audio.requestRecordingPermissionsAsync();
@@ -126,9 +130,13 @@ export function useGrabador() {
   };
 
   const parar = async () => {
-    if (!recorder) return null;
+    if (!recorder) {
+      setUltimoError('El grabador no está disponible en este teléfono');
+      return null;
+    }
     if (timer.current) { clearInterval(timer.current); timer.current = null; }
     setGrabando(false);
+    setUltimoError(null);
     try {
       await recorder.stop();
       // playsInSilentMode se repite a proposito.
@@ -140,7 +148,16 @@ export function useGrabador() {
       const uri = recorder.uri;
       const dur = seg;
       setSeg(0);
-      if (!uri || dur < 1) return null;   // toques accidentales
+      // Un toque corto no es un error: se descarta sin avisar nada.
+      if (dur < 1) return null;
+
+      // Sin archivo si lo es, y hay que decirlo: la persona hablo diez
+      // segundos y se quedo esperando que pasara algo.
+      if (!uri) {
+        setUltimoError('La grabación salió vacía. Revisá el permiso del micrófono.');
+        return null;
+      }
+
       return {
         uri,
         fileName: `audio_${Date.now()}.m4a`,
@@ -148,6 +165,7 @@ export function useGrabador() {
         duracion: dur,
       };
     } catch (e) {
+      setUltimoError(e.message || String(e));
       return null;
     }
   };
@@ -161,10 +179,12 @@ export function useGrabador() {
         await recorder.stop();
         await Audio.setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       }
-    } catch (e) { /* nada que hacer */ }
+    } catch (e) {
+      setUltimoError(e.message || String(e));
+    }
   };
 
-  return { disponible: hayAudio, grabando, seg, arrancar, parar, cancelar };
+  return { disponible: hayAudio, grabando, seg, arrancar, parar, cancelar, ultimoError };
 }
 
 

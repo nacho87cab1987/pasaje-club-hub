@@ -7,8 +7,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { crmApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Avatar, Cargando, ErrorBox, Vacio } from '../components/UI';
-import { filtros, estadoDe, cargarEstados, hayCatalogo } from '../estados';
-import MenuContextual, { usarPosicionToque } from '../MenuContextual';
+import { filtros, estadoDe, cargarEstados, hayCatalogo, ordenEstados } from '../estados';
+import MenuContextual, { usarPosicionToque, vibrar } from '../MenuContextual';
 import { C, R, sombra, iniciales } from '../theme';
 
 
@@ -134,6 +134,25 @@ export default function CrmScreen({ navigation }) {
     return () => clearTimeout(t);
   }, [estado, q, cargar]);
 
+  const cambiarEstado = (conv) => {
+    Alert.alert('Cambiar estado', `Ahora: ${estadoDe(conv.estado).nom}`,
+      [
+        ...ordenEstados().filter((e) => e !== conv.estado).map((e) => ({
+          text: estadoDe(e).nom,
+          onPress: async () => {
+            try {
+              await crm.estado(conv.id, e);
+              cargar();
+              vibrar();
+            } catch (err) {
+              Alert.alert('No se pudo', err.message);
+            }
+          },
+        })),
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
+  };
+
   const alternarLeido = async (conv) => {
     const sinLeer = Number(conv.no_leidos_vendedor || conv.no_leidos_admin || 0) > 0;
     const antes = items;
@@ -159,6 +178,13 @@ export default function CrmScreen({ navigation }) {
           texto: sinLeer ? 'Marcar como leida' : 'Marcar como no leida',
           icono: sinLeer ? 'mark-email-read' : 'mark-email-unread',
           onPress: () => alternarLeido(conv),
+        },
+        // Cambiar el estado sin entrar: al revisar la lista de la mañana uno
+        // va marcando varias seguidas, y abrir y volver por cada una cansa.
+        {
+          texto: 'Cambiar estado',
+          icono: 'flag',
+          onPress: () => cambiarEstado(conv),
         },
         {
           texto: 'Abrir conversacion',

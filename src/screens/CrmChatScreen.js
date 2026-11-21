@@ -224,6 +224,7 @@ export default function CrmChatScreen({ route, navigation }) {
   const [modoNota, setModoNota] = useState(false);
   const [plantillas, setPlantillas] = useState([]);
   const [verPlantillas, setVerPlantillas] = useState(false);
+  const [plantillasWa, setPlantillasWa] = useState(null);
   const [etiquetas, setEtiquetas] = useState([]);
   const [verEtiquetas, setVerEtiquetas] = useState(false);
   const [falla, setFalla] = useState({});
@@ -312,13 +313,30 @@ export default function CrmChatScreen({ route, navigation }) {
 
   const soltarAudio = async () => {
     const audio = await grabador.parar();
-    if (!audio) return;   // muy corto o fallo
+
+    // Sin audio puede ser un toque corto, pero tambien una falla al grabar.
+    // Diferenciarlo evita que la persona siga intentando sin saber que pasa.
+    if (!audio) {
+      if (grabador.ultimoError) {
+        Alert.alert('No se pudo grabar', grabador.ultimoError);
+      }
+      return;
+    }
+
     setSubiendo(true);
     try {
       const subido = await crm.subirAdjunto(audio, id, audio.duracion);
+      if (!subido || !subido.id) throw new Error('El servidor no devolvió el adjunto');
       setAdjuntos((x) => [...x, { ...subido, duracion: audio.duracion }]);
     } catch (e) {
-      Alert.alert('No se pudo subir el audio', e.message);
+      // El detalle importa: el error puede ser del permiso del microfono, de
+      // la subida o del formato, y cada uno se arregla distinto.
+      Alert.alert(
+        'No se pudo subir el audio',
+        `${(e && e.message) || String(e)}\n\n`
+        + `Duración ${audio.duracion || 0}s`
+        + (audio.uri ? ` · ${String(audio.uri).split('.').pop()}` : ''),
+      );
     } finally {
       setSubiendo(false);
     }
@@ -466,6 +484,49 @@ export default function CrmChatScreen({ route, navigation }) {
     });
   };
 
+  const abrirPlantillasWa = async () => {
+    try {
+      const r = await crm.plantillasWa();
+      setPlantillasWa(r.items || []);
+    } catch (e) {
+      Alert.alert('No se pudieron cargar', e.message);
+    }
+  };
+
+  /**
+   * Manda una plantilla aprobada para reabrir la conversación.
+   *
+   * Las que piden variables se dejan para el panel: completarlas de a una en
+   * un teléfono es incómodo y equivocarse manda un mensaje mal armado al
+   * cliente, que no se puede borrar.
+   */
+  const mandarPlantilla = async (t) => {
+    if (t.cuantas_variables > 0) {
+      Alert.alert(
+        'Esta plantilla pide datos',
+        `"${t.nombre}" necesita ${t.cuantas_variables} dato(s) para completarse. `
+        + 'Mandala desde el panel web.',
+      );
+      return;
+    }
+
+    setPlantillasWa(null);
+    setSubiendo(true);
+    try {
+      await crm.iniciarPlantilla({
+        plantilla_id: t.id,
+        conversacion_id: id,
+        cliente_telefono: conv && conv.cliente_telefono,
+      });
+      await cargar();
+      vibrar();
+    } catch (e) {
+      Alert.alert('No se pudo enviar', e.message);
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
   const cambiarEstado = () => {
     if (!conv) return;
     Alert.alert('Cambiar estado', `Ahora: ${conv.estado}`,
@@ -556,12 +617,21 @@ export default function CrmChatScreen({ route, navigation }) {
           );
         })}
         {wa ? (
-          <View style={[s.wa, !wa.abierta && { backgroundColor: '#F6E3EA' }]}>
-            <MaterialIcons name={wa.abierta ? 'schedule' : 'lock'} size={12} color={wa.abierta ? '#0F6E56' : C.bordo} />
+          // Con la ventana cerrada el aviso es tocable: lleva a las
+          // plantillas, que es lo unico que se puede mandar en ese momento.
+          // Decir "ventana cerrada" sin ofrecer la salida deja a la persona
+          // sin saber que hacer.
+          <Pressable
+            style={[s.wa, !wa.abierta && { backgroundColor: '#F6E3EA' }]}
+            onPress={!wa.abierta ? abrirPlantillasWa : undefined}
+            disabled={wa.abierta}
+          >
+            <MaterialIcons name={wa.abierta ? 'schedule' : 'lock'} size={12}
+              color={wa.abierta ? '#0F6E56' : C.bordo} />
             <Text style={[s.waTxt, !wa.abierta && { color: C.bordo }]}>
-              {wa.abierta ? `Ventana ${wa.texto}` : 'Ventana cerrada'}
+              {wa.abierta ? `Ventana ${wa.texto}` : 'Ventana cerrada · enviar plantilla'}
             </Text>
-          </View>
+          </Pressable>
         ) : null}
       </View>
 
@@ -765,6 +835,29 @@ export default function CrmChatScreen({ route, navigation }) {
           </Pressable>
         )}
       </View>
+      <Hoja visible={!!plantillasWa} onCerrar={() => setPlantillasWa(null)}
+        titulo="Plantillas de WhatsApp">
+        <Text style={s.hojaNota}>
+          Pasaron más de 24 horas desde el último mensaje del cliente. Solo se
+          pueden mandar plantillas aprobadas por Meta.
+        </Text>
+        {(plantillasWa || []).length === 0 ? (
+          <Text style={s.vacioHoja}>
+            No hay plantillas aprobadas. Se cargan desde el panel web.
+          </Text>
+        ) : (plantillasWa || []).map((t) => (
+          <Pressable key={t.id} style={s.plantillaWa} onPress={() => mandarPlantilla(t)}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.plantillaWaT}>{t.nombre}</Text>
+              {t.cuerpo ? (
+                <Text style={s.plantillaWaC} numberOfLines={3}>{t.cuerpo}</Text>
+              ) : null}
+            </View>
+            <MaterialIcons name="send" size={18} color={C.tealDeep} />
+          </Pressable>
+        ))}
+      </Hoja>
+
       <Hoja visible={verPlantillas} onCerrar={() => setVerPlantillas(false)} titulo="Respuestas rapidas">
         {falla.plantillas ? (
           <Text style={s.hojaVacio}>No pude cargarlas: {falla.plantillas}</Text>
@@ -1034,6 +1127,19 @@ const s = StyleSheet.create({
   // del vendedor, y la segunda definicion pisaba a la primera. El texto de la
   // transcripcion terminaba del color de las notas -crema sobre crema- y no
   // se veia, aunque estuviera ahi.
+  hojaNota: {
+    fontSize: 12.5, color: C.ink3, lineHeight: 18,
+    paddingHorizontal: 16, paddingBottom: 12,
+  },
+  vacioHoja: { fontSize: 13, color: C.ink3, textAlign: 'center', padding: 24 },
+  plantillaWa: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 13,
+    borderTopWidth: 1, borderTopColor: C.lineSoft,
+  },
+  plantillaWaT: { fontSize: 14.5, fontWeight: '600', color: C.ink },
+  plantillaWaC: { fontSize: 12.5, color: C.ink3, marginTop: 3, lineHeight: 17 },
+
   voz: { paddingVertical: 4, minWidth: 168, maxWidth: 250 },
   vozTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   vozTit: { fontSize: 11.5, fontWeight: '700', color: C.ink3 },
